@@ -175,7 +175,7 @@ ax2_2c.legend(loc='upper right')
 fig.tight_layout()
 plt.show(block=True)
 
-fig.savefig('./temp_analysis_' + scan + '.pdf')
+fig.savefig('./temp_analysis_' + scan + '.png')
 
 file.close()
 
