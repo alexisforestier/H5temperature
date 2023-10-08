@@ -53,7 +53,7 @@ x_tofit = x[in_interval]
 y_planck_tofit = y_planck[in_interval]
 
 fig, axs = plt.subplots(2,2, figsize = (12, 9))
-fig.suptitle(scan, horizontalalignment='left')
+fig.suptitle(scan)
 
 
 axs[0,0].set_xlim(fit_interval + np.array([-20, 20]))
@@ -75,7 +75,7 @@ par, cov = curve_fit(planck,
 axs[0,0].plot(x_tofit, planck(x_tofit, *par) , c='limegreen', linewidth=2, label='new fit')
 
 ax_planck_res = axs[0,0].twinx()
-ax_planck_res.set_ylabel('residuals')
+ax_planck_res.set_ylabel('Planck fit residuals')
 axs[0,0].set_zorder(1)
 axs[0,0].patch.set_visible(False)
 
@@ -116,7 +116,7 @@ axs[1,0].plot( x_wien, a * x_wien + b, c='limegreen', linewidth=2, label='fit')
 axs[1,0]
 
 ax_wien_res = axs[1,0].twinx()
-ax_wien_res.set_ylabel('residuals')
+ax_wien_res.set_ylabel('Wien fit residuals')
 axs[1,0].set_zorder(1)
 axs[1,0].patch.set_visible(False)
 
