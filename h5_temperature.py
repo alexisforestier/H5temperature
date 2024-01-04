@@ -3,8 +3,9 @@ import numpy as np
 import pandas as pd
 import h5py
 import matplotlib.pyplot
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+import matplotlib
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from PyQt5.QtWidgets import (QApplication, 
 							 QWidget,
 							 QLabel,
@@ -20,12 +21,54 @@ from PyQt5.QtWidgets import (QApplication,
 							 QFileDialog,
 							 QMessageBox)
 
+h = 6.62607015e-34 # J/s
+c = 299792458 # m/s
+k = 1.380649 * 1e-23 # J/K
 
-class MplCanvas(FigureCanvas):
+def planck(lamb, eps, temp, b):
+    lambnm = lamb * 1e-9
+    f = eps * ( 2*np.pi*h*c**2 / (lambnm**5) ) * 1 / ( np.exp(h * c / (lambnm * k * temp)) - 1 ) + b
+    return f
+
+def wien(I, lamb):
+    lambnm = lamb * 1e-9
+    f = (k / (h*c)) * np.log(2 * np.pi * h * c**2 / (I * lambnm**5) )
+    return f 
+
+def temp_2color(lamb, wien, deltapx):    
+    n = np.array( [ 1/lamb[k] - 1/lamb[k + deltapx] for k in range(len(lamb)-deltapx)] )
+    d = np.array( [wien[k] - wien[k + deltapx] for k in range(len(lamb)-deltapx)] )
+    return(1e9 * n/d)
+
+
+class PlotsCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
-        fig, self.axes = matplotlib.pyplot.subplots(2, 2, 
+        self.fig, self.axes = matplotlib.pyplot.subplots(2, 2, 
         					constrained_layout=True)
-        super(MplCanvas, self).__init__(fig)
+
+        # Planck
+        self.axes[0,0].set_xlabel('wavelength (nm)')
+        self.axes[0,0].set_ylabel('intensity (arb. unit)')
+        self.ax_planck_res = self.axes[0,0].twinx()
+        self.ax_planck_res.set_ylabel('Planck fit residuals')
+
+		# Wien
+        self.axes[1,0].set_xlabel('1/wavelength (1/nm)')
+        self.axes[1,0].set_ylabel('Wien')
+        self.ax_wien_res = self.axes[1,0].twinx()
+        self.ax_wien_res.set_ylabel('Wien fit residuals')
+
+        # Two color
+        self.axes[0,1].set_xlabel('wavelength (nm)')
+        self.axes[0,1].set_ylabel('two-color temperature (K)')
+        self.axes_2c_hist = self.axes[0,1].twiny()
+        self.axes_2c_hist.set_xlabel('frequency')
+
+        # Delta
+        self.axes[1,1].set_xlabel('delta (px)')
+        self.axes[1,1].set_ylabel('two-color temperature std. dev. (K)')
+
+        super(PlotsCanvas, self).__init__(self.fig)
 
 class MainWindow(QWidget):
 	def __init__(self):
@@ -112,18 +155,18 @@ class MainWindow(QWidget):
 
 		# center layout
 		center_groupbox = QGroupBox()
-		center_groupbox.setStyleSheet('QGroupBox  {border: 1px solid gray;background-color: white;}')
+		center_groupbox.setStyleSheet('QGroupBox  {border: 1px solid gray;\
+													background-color: white;}')
 		plot_layout = QVBoxLayout()
 
-		# set empty plot
-		self.canvas = MplCanvas(self)
-		self.toolbar = NavigationToolbar(self.canvas, self)
+		# set empty plots
+		self.canvas = PlotsCanvas(self)
+		self.toolbar = NavigationToolbar2QT(self.canvas, self)
+		self.toolbar.setStyleSheet("font-size: 16px;")
 		plot_layout.addWidget(self.toolbar)
 		plot_layout.addWidget(self.canvas)
 
 		center_groupbox.setLayout(plot_layout)
-
-
 
 
 		layout = QHBoxLayout()
@@ -139,7 +182,9 @@ class MainWindow(QWidget):
 		# CONNECTS.
 
 		load_button.clicked.connect(self.load_h5file)
-		clear_button.clicked.connect(self.clear)
+		clear_button.clicked.connect(self.clear_alldata)
+
+		self.dataset_list.currentTextChanged.connect(self.update_plots)
 
 
 	def load_h5file(self):
@@ -167,13 +212,34 @@ class MainWindow(QWidget):
 			
 			self.dataset_list.addItems(self.data.keys())
 
-	def clear(self):
+	def clear_alldata(self):
 		if self.filepath != str():
 			self.filepath = str()
 			self.currentfilename_label.setText('')
 			self.data = dict()
 			self.dataset_list.clear()
 
+
+	def update_plots(self, nam):
+
+		self.canvas.axes[0,0].clear()
+		self.canvas.axes[1,0].clear()
+		
+		x = np.array( self.data[nam]['spectrum_lambdas'] )
+		y_planck = np.array( self.data[nam]['planck_data'] )
+		y_wien = wien(y_planck, x)
+
+		self.canvas.axes[0,0].scatter(x, 
+									  y_planck, 
+									  c='gray', 
+									  s=10, 
+									  label='Planck data')
+		self.canvas.axes[1,0].scatter(1/x, 
+									  y_wien, 
+									  c='gray', 
+									  s=10, 
+									  label='Wien data')
+		self.canvas.draw()
 
 app = QApplication(sys.argv)
 window = MainWindow()
