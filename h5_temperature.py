@@ -2,6 +2,9 @@ import sys
 import numpy as np
 import pandas as pd
 import h5py
+import matplotlib.pyplot
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import (QApplication, 
 							 QWidget,
 							 QLabel,
@@ -14,18 +17,29 @@ from PyQt5.QtWidgets import (QApplication,
 							 QFormLayout,
 							 QVBoxLayout,
 							 QHBoxLayout,
-							 QFileDialog)
+							 QFileDialog,
+							 QMessageBox)
 
 
+class MplCanvas(FigureCanvas):
+    def __init__(self, parent=None):
+        fig, self.axes = matplotlib.pyplot.subplots(2, 2, 
+        					constrained_layout=True)
+        super(MplCanvas, self).__init__(fig)
 
 class MainWindow(QWidget):
 	def __init__(self):
 		super().__init__()
 
-		self.resize(1100,800)
+		self.resize(1500,900)
 		
+
+		# data stored in self
 		self.data = dict()
 		self.filepath = str()
+
+
+		# layouts ...
 
 		# left layout	
 		load_button = QPushButton('Load h5')
@@ -73,7 +87,7 @@ class MainWindow(QWidget):
 		upperbound_spinbox.setValue(800)
 		delta_spinbox.setValue(100)
 
-		bg_checkbox = QCheckBox('Fit background')
+		bg_checkbox = QCheckBox('Fit Planck background')
 
 		fit_button = QPushButton('Fit')
 		results_button = QPushButton('Results')
@@ -97,7 +111,19 @@ class MainWindow(QWidget):
 
 
 		# center layout
-		center_groupbox = QGroupBox('Plots')
+		center_groupbox = QGroupBox()
+		center_groupbox.setStyleSheet('QGroupBox  {border: 1px solid gray;background-color: white;}')
+		plot_layout = QVBoxLayout()
+
+		# set empty plot
+		self.canvas = MplCanvas(self)
+		self.toolbar = NavigationToolbar(self.canvas, self)
+		plot_layout.addWidget(self.toolbar)
+		plot_layout.addWidget(self.canvas)
+
+		center_groupbox.setLayout(plot_layout)
+
+
 
 
 		layout = QHBoxLayout()
@@ -110,8 +136,11 @@ class MainWindow(QWidget):
 		self.setLayout(layout)
 
 
+		# CONNECTS.
+
 		load_button.clicked.connect(self.load_h5file)
 		clear_button.clicked.connect(self.clear)
+
 
 	def load_h5file(self):
 		options = QFileDialog.Options()
@@ -119,14 +148,23 @@ class MainWindow(QWidget):
 		self.filepath, _ = QFileDialog.getOpenFileName(self,
 			"Load HDF5 file", "","HDF5 file (*.h5)", 
 			options=options)
+
 		if self.filepath != str():
+			# read h5 file and store in self.data: 
 			file = h5py.File(self.filepath, 'r')
 			for nam, dat in file.items():
 				# get temperature measurements only
 				if 'measurement/T_planck' in dat:
 					self.data[nam] = dat['measurement']
 
-			self.currentfilename_label.setText(self.filepath.split('/')[-1])
+			if len(self.data) == 0:
+				QMessageBox.about(self, 
+					"Message", "No temperature data available in HDF5 file.")
+				self.filepath = str()
+			else:
+				self.currentfilename_label.setText(
+										self.filepath.split('/')[-1])
+			
 			self.dataset_list.addItems(self.data.keys())
 
 	def clear(self):
