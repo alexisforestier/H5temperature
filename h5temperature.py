@@ -60,6 +60,11 @@ class MainWindow(QWidget):
         # data stored in self
         self.filepath = str()
         self.data = dict()
+        # parameters and their default values
+        self.pars = dict(lowerb = 500,
+                         upperb = 900,
+                         delta = 100, 
+                         bg = False)
 
         # LAYOUTS
 
@@ -98,22 +103,23 @@ class MainWindow(QWidget):
         upperbound_spinbox = QSpinBox()
         delta_spinbox = QSpinBox()
 
-        lowerbound_spinbox.setMinimum(400)
-        upperbound_spinbox.setMinimum(400)
+        lowerbound_spinbox.setMinimum(1)
+        upperbound_spinbox.setMinimum(1)
         delta_spinbox.setMinimum(1)
-        lowerbound_spinbox.setMaximum(1200)
-        upperbound_spinbox.setMaximum(1200)
-        delta_spinbox.setMaximum(1000)
+        lowerbound_spinbox.setMaximum(9999)
+        upperbound_spinbox.setMaximum(9999)
+        delta_spinbox.setMaximum(9999)
+        
         # default values:
-        lowerbound_spinbox.setValue(400)
-        upperbound_spinbox.setValue(800)
-        delta_spinbox.setValue(100)
+        lowerbound_spinbox.setValue(self.pars.get('lowerb'))
+        upperbound_spinbox.setValue(self.pars.get('upperb'))
+        delta_spinbox.setValue(self.pars.get('delta'))
 
         bg_checkbox = QCheckBox('Fit Planck background')
+        bg_checkbox.setChecked(self.pars.get('bg'))
 
         choosedelta_button = QPushButton('Choose delta')
         fit_button = QPushButton('Fit')
-        results_button = QPushButton('Results')
 
         fitparam_form = QFormLayout()
         fitparam_form.addRow('Lower limit (nm):', lowerbound_spinbox)
@@ -125,10 +131,9 @@ class MainWindow(QWidget):
         fit_layout.addWidget(choosedelta_button)
         fit_layout.addWidget(bg_checkbox)
         fit_layout.addWidget(fit_button)
-        fit_layout.addWidget(results_button)
         fit_layout.addStretch()
 
-        right_groupbox = QGroupBox('Fit parameters')
+        right_groupbox = QGroupBox('Fitting')
         right_groupbox.setLayout(fit_layout)
         right_groupbox.setMinimumWidth(200)
 
@@ -162,6 +167,15 @@ class MainWindow(QWidget):
 
         load_button.clicked.connect(self.load_h5file)
         clear_button.clicked.connect(self.clear_alldata)
+
+        lowerbound_spinbox.valueChanged.connect(
+                lambda x: self.pars.__setitem__('lowerb', x))
+        upperbound_spinbox.valueChanged.connect(
+                lambda x: self.pars.__setitem__('upperb', x))
+        delta_spinbox.valueChanged.connect(
+                lambda x: self.pars.__setitem__('delta', x))
+        bg_checkbox.stateChanged.connect(
+                lambda b: self.pars.__setitem__('bg', b))
 
         self.dataset_list.currentTextChanged.connect(self.update_plots)
 
