@@ -111,7 +111,7 @@ if __name__ == '__main__':
     axs[1,0].set_ylabel('Wien')
     
     x_wien = 1/x_tofit
-    y_wien = wien(y_planck_tofit, x_tofit)
+    y_wien = wien(x_tofit, y_planck_tofit)
     
     axs[1,0].scatter(x_wien, y_wien, c='k', s=10, alpha=0.2, label='Wien data')
     

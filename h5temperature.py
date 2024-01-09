@@ -61,7 +61,7 @@ class MainWindow(QWidget):
         self.filepath = str()
         self.data = dict()
         # parameters and their default values
-        self.pars = dict(lowerb = 500,
+        self.pars = dict(lowerb = 550,
                          upperb = 900,
                          delta = 100, 
                          bg = False)
@@ -217,38 +217,55 @@ class MainWindow(QWidget):
 
     def update_plots(self, nam):
         if nam:
-
+            # clear previous data on plots
             self.canvas.axes[0,0].collections.clear()
             self.canvas.axes[1,0].collections.clear()
             self.canvas.axes[0,1].collections.clear()
             _ = [b.remove() for b in self.canvas.axes[1,1].containers]
 
-            x = np.array( self.data[nam]['spectrum_lambdas'] )
+            lam = np.array( self.data[nam]['spectrum_lambdas'] )
             y_planck = np.array( self.data[nam]['planck_data'] )
-            y_wien = wien(y_planck, x)
-            y_2c = temp2color(x, y_wien, 100)
-    
-            self.canvas.axes[0,0].scatter(x, 
+            y_wien = wien(lam, y_planck)
+
+            self.canvas.axes[0,0].scatter(lam, 
                                           y_planck, 
-                                          c='gray', 
-                                          s=10, 
+                                          edgecolor='k',
+                                          facecolor='royalblue',
+                                          alpha=.3,
+                                          s=15, 
                                           label='Planck data')
-            self.canvas.axes[1,0].scatter(1/x, 
+            self.canvas.axes[1,0].scatter(1/lam, 
                                           y_wien, 
-                                          c='gray', 
-                                          s=10, 
+                                          edgecolor='k',
+                                          facecolor='royalblue',
+                                          alpha=.3,
+                                          s=15, 
                                           label='Wien data')
-            self.canvas.axes[0,1].scatter(x[:-100], 
-                                          y_2c, 
-                                          c='gray', 
-                                          s=10, 
-                                          label='Two-color data')
+
+            within = np.logical_and(lam >= self.pars['lowerb'], 
+                                    lam <= self.pars['upperb'])
+
+            y_2c = temp2color(lam[within], 
+                              y_wien[within], 
+                              self.pars['delta'])
     
+            self.canvas.axes[0,1].scatter(lam[within][:-self.pars['delta']], 
+                                          y_2c, 
+                                          edgecolor='k',
+                                          facecolor='royalblue',
+                                          alpha=.3,
+                                          s=15, 
+                                          label='Two-color data')
             self.canvas.axes[1,1].hist(y_2c, 
-                                       bins = int(len(y_2c)/10),
-                                       alpha=0.3, 
+                                       color='royalblue',
+                                       bins = 30,
+                                       alpha=1, 
                                        label='two-color histogram')
+
             self.canvas.draw()
+
+            # TO DO : Comprendre premier points du 2color, 
+            # autoscales. Legendes. Fits. Choose Delta...
 
 app = QApplication(sys.argv)
 window = MainWindow()
