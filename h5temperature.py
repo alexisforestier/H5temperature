@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import pandas as pd
 import h5py
+from scipy.optimize import curve_fit
 import matplotlib.pyplot
 import matplotlib
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -36,14 +37,14 @@ class PlotsCanvas(FigureCanvasQTAgg):
         self.ax_planck_res.set_ylabel('Planck fit residuals')
 
         # Wien
-        self.axes[1,0].set_xlabel('1/wavelength (1/nm)')
-        self.axes[1,0].set_ylabel('Wien')
-        self.ax_wien_res = self.axes[1,0].twinx()
+        self.axes[0,1].set_xlabel('1/wavelength (1/nm)')
+        self.axes[0,1].set_ylabel('Wien')
+        self.ax_wien_res = self.axes[0,1].twinx()
         self.ax_wien_res.set_ylabel('Wien fit residuals')
 
         # Two color
-        self.axes[0,1].set_xlabel('wavelength (nm)')
-        self.axes[0,1].set_ylabel('two-color temperature (K)')
+        self.axes[1,0].set_xlabel('wavelength (nm)')
+        self.axes[1,0].set_ylabel('two-color temperature (K)')
 
         # Two color Histogram
         self.axes[1,1].set_xlabel('two-color temperature (K)')
@@ -219,28 +220,13 @@ class MainWindow(QWidget):
         if nam:
             # clear previous data on plots
             self.canvas.axes[0,0].collections.clear()
-            self.canvas.axes[1,0].collections.clear()
             self.canvas.axes[0,1].collections.clear()
+            self.canvas.axes[1,0].collections.clear()
             _ = [b.remove() for b in self.canvas.axes[1,1].containers]
 
             lam = np.array( self.data[nam]['spectrum_lambdas'] )
             y_planck = np.array( self.data[nam]['planck_data'] )
             y_wien = wien(lam, y_planck)
-
-            self.canvas.axes[0,0].scatter(lam, 
-                                          y_planck, 
-                                          edgecolor='k',
-                                          facecolor='royalblue',
-                                          alpha=.3,
-                                          s=15, 
-                                          label='Planck data')
-            self.canvas.axes[1,0].scatter(1/lam, 
-                                          y_wien, 
-                                          edgecolor='k',
-                                          facecolor='royalblue',
-                                          alpha=.3,
-                                          s=15, 
-                                          label='Wien data')
 
             within = np.logical_and(lam >= self.pars['lowerb'], 
                                     lam <= self.pars['upperb'])
@@ -248,24 +234,70 @@ class MainWindow(QWidget):
             y_2c = temp2color(lam[within], 
                               y_wien[within], 
                               self.pars['delta'])
-    
-            self.canvas.axes[0,1].scatter(lam[within][:-self.pars['delta']], 
+            
+            self.canvas.axes[0,0].scatter(lam, 
+                                          y_planck, 
+                                          edgecolor='k',
+                                          facecolor='royalblue',
+                                          alpha=.3,
+                                          s=15, 
+                                          label='Planck data')
+
+            self.canvas.axes[0,1].scatter(1/lam, 
+                                          y_wien, 
+                                          edgecolor='k',
+                                          facecolor='royalblue',
+                                          alpha=.3,
+                                          s=15, 
+                                          label='Wien data')
+       
+            self.canvas.axes[1,0].scatter(lam[within][:-self.pars['delta']], 
                                           y_2c, 
                                           edgecolor='k',
                                           facecolor='royalblue',
                                           alpha=.3,
                                           s=15, 
-                                          label='Two-color data')
+                                          label='two-color data')
+
             self.canvas.axes[1,1].hist(y_2c, 
                                        color='royalblue',
-                                       bins = 30,
+                                       bins = 50,
                                        alpha=1, 
                                        label='two-color histogram')
 
+            self.canvas.axes[1,0].set_xlim([self.pars['lowerb'],
+                                            self.pars['upperb']+20])
+            self.canvas.axes[1,0].set_ylim([np.mean(y_2c) - 5 * np.std(y_2c), 
+                                            np.mean(y_2c) + 5 * np.std(y_2c)])
+            self.canvas.axes[1,1].set_xlim([np.mean(y_2c) - 5 * np.std(y_2c),
+                                            np.mean(y_2c) + 5 * np.std(y_2c)])
+
+            self.canvas.axes[1,0].legend() 
+            self.canvas.axes[0,1].legend()    
+            self.canvas.axes[0,0].legend()
+            self.canvas.axes[1,1].legend()
+
+            self.fit(lam, y_planck, y_wien, y_2c, within)
+
             self.canvas.draw()
 
-            # TO DO : Comprendre premier points du 2color, 
-            # autoscales. Legendes. Fits. Choose Delta...
+
+
+    def fit(self, lam, y_planck, y_wien, y_2c, within):
+        p_planck, cov_planck = curve_fit(planck, 
+                                        lam[within], 
+                                        y_planck[within], 
+                     p0     = (    1e-6,   2000,        0),
+                     bounds =(( -np.inf,      0,        0),
+                             (  +np.inf,    1e5,  +np.inf)),
+                     method = 'trf')
+
+        self.canvas.axes[0,0].plot(lam[within],
+                                   planck(lam[within], *p_planck),
+                                   color='r',
+                                   linewidth=2)
+        print(p_planck)
+        print(cov_planck)
 
 app = QApplication(sys.argv)
 window = MainWindow()
