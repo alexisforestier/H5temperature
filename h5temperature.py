@@ -157,9 +157,9 @@ class MainWindow(QWidget):
         layout = QHBoxLayout()
         layout.addWidget(left_groupbox, stretch=2)
         layout.addStretch()
-        layout.addWidget(center_groupbox, stretch=10)
+        layout.addWidget(center_groupbox, stretch=9)
         layout.addStretch()
-        layout.addWidget(right_groupbox, stretch=1)
+        layout.addWidget(right_groupbox, stretch=2)
         
         self.setLayout(layout)
 
@@ -168,6 +168,8 @@ class MainWindow(QWidget):
 
         load_button.clicked.connect(self.load_h5file)
         clear_button.clicked.connect(self.clear_alldata)
+        # fit_button.clicked.connect(
+        #         lambda: self.fit(self.dataset_list.currentItem().text()))
 
         lowerbound_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('lowerb', x))
@@ -178,7 +180,7 @@ class MainWindow(QWidget):
         bg_checkbox.stateChanged.connect(
                 lambda b: self.pars.__setitem__('bg', b))
 
-        self.dataset_list.currentTextChanged.connect(self.update_plots)
+        self.dataset_list.currentTextChanged.connect(self.update_plots_fit)
 
 
     def load_h5file(self):
@@ -215,15 +217,33 @@ class MainWindow(QWidget):
             self.data = dict()
             self.dataset_list.clear()
 
-
-    def update_plots(self, nam):
-        if nam:
+    def clear_plots(self):
             # clear previous data on plots
             self.canvas.axes[0,0].collections.clear()
             self.canvas.axes[0,1].collections.clear()
             self.canvas.axes[1,0].collections.clear()
             _ = [b.remove() for b in self.canvas.axes[1,1].containers]
 
+            self.canvas.ax_planck_res.collections.clear()
+            self.canvas.ax_wien_res.collections.clear()
+
+            self.canvas.axes[0,0].lines.clear()
+            self.canvas.axes[0,1].lines.clear()
+            self.canvas.axes[1,0].lines.clear()
+            self.canvas.axes[1,1].lines.clear()
+
+            self.canvas.axes[0,0].texts.clear()
+            self.canvas.axes[0,1].texts.clear()
+            self.canvas.axes[1,0].texts.clear()
+            self.canvas.axes[1,1].texts.clear()
+
+
+    def update_plots_fit(self, nam):
+        if nam:
+
+            self.clear_plots()
+
+            # read data
             lam = np.array( self.data[nam]['spectrum_lambdas'] )
             y_planck = np.array( self.data[nam]['planck_data'] )
             y_wien = wien(lam, y_planck)
@@ -235,6 +255,22 @@ class MainWindow(QWidget):
                               y_wien[within], 
                               self.pars['delta'])
             
+            # Planck fit
+            p_planck, cov_planck = curve_fit(planck, 
+                                             lam[within], 
+                                             y_planck[within], 
+                                p0     = (    1e-6,   2000,        0),
+                                bounds =(( -np.inf,      0,        0),
+                                        (  +np.inf,    1e5,  +np.inf)),
+                                method = 'trf')
+            Tplanck = p_planck[1]
+
+            # Wien fit
+            a, b = np.polyfit(1/lam[within], y_wien[within], 1)
+            Twien = 1e9 * 1/a
+ 
+            
+            # plot data
             self.canvas.axes[0,0].scatter(lam, 
                                           y_planck, 
                                           edgecolor='k',
@@ -272,32 +308,76 @@ class MainWindow(QWidget):
             self.canvas.axes[1,1].set_xlim([np.mean(y_2c) - 5 * np.std(y_2c),
                                             np.mean(y_2c) + 5 * np.std(y_2c)])
 
+
+            # plot fits:
+            self.canvas.axes[0,0].plot(lam[within],
+                                       planck(lam[within], *p_planck),
+                                       color='r',
+                                       linewidth=2,
+                                       label='Planck fit')
+            self.canvas.ax_planck_res.scatter(lam[within], 
+                                       y_planck[within]-
+                                       planck(lam[within], *p_planck), 
+                                       color='gray',
+                                       alpha=0.2,
+                                       s=15, 
+                                       label='residuals')
+
+            self.canvas.axes[0,1].plot(1/lam[within], a / lam[within] + b, 
+                          c='r', 
+                          linewidth=2, 
+                          label='Wien fit')
+
+            self.canvas.axes[1,0].axhline(np.mean(y_2c), 
+                                          color='r',
+                                          linestyle='dashed',
+                                          label='mean')            
+            
+            self.canvas.ax_wien_res.scatter( 1/lam[within], 
+                                             y_wien[within] - ( a / lam[within] + b ), 
+                                             color='gray',
+                                             alpha=0.2,
+                                             s=15, 
+                                             label='residuals')
+
+
+
+            self.canvas.axes[0,0].text(0.1, 0.4, 
+                                'T$_\\mathrm{Planck}$= ' + 
+                                str( round(Tplanck) ) + 
+                                ' K', 
+                                size=15, 
+                                color='r', 
+                                transform=self.canvas.axes[0,0].transAxes)
+
+            self.canvas.axes[0,1].text(0.4, 0.2, 
+                                'T$_\\mathrm{Wien}$= ' + 
+                                str( round(Twien) ) + 
+                                ' K', 
+                                size=15, 
+                                color='r', 
+                                transform=self.canvas.axes[0,1].transAxes)
+            
+            self.canvas.axes[1,0].text(0.3, 0.7, 
+                                'T$_\\mathrm{two-color}$= ' + 
+                                str( round( np.mean(y_2c) ) ) + 
+                                ' K', 
+                                size=15, 
+                                color='r', 
+                                transform=self.canvas.axes[1,0].transAxes)
+
+
+            self.canvas.axes[0,0].legend(loc='upper left')
+            self.canvas.ax_planck_res.legend(loc='upper right')
+            self.canvas.axes[0,1].legend(loc='upper left')   
+            self.canvas.ax_wien_res.legend(loc='upper right')
             self.canvas.axes[1,0].legend() 
-            self.canvas.axes[0,1].legend()    
-            self.canvas.axes[0,0].legend()
             self.canvas.axes[1,1].legend()
-
-            self.fit(lam, y_planck, y_wien, y_2c, within)
-
+            
             self.canvas.draw()
 
 
 
-    def fit(self, lam, y_planck, y_wien, y_2c, within):
-        p_planck, cov_planck = curve_fit(planck, 
-                                        lam[within], 
-                                        y_planck[within], 
-                     p0     = (    1e-6,   2000,        0),
-                     bounds =(( -np.inf,      0,        0),
-                             (  +np.inf,    1e5,  +np.inf)),
-                     method = 'trf')
-
-        self.canvas.axes[0,0].plot(lam[within],
-                                   planck(lam[within], *p_planck),
-                                   color='r',
-                                   linewidth=2)
-        print(p_planck)
-        print(cov_planck)
 
 app = QApplication(sys.argv)
 window = MainWindow()
