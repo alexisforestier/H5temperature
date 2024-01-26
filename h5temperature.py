@@ -81,9 +81,11 @@ class MainWindow(QWidget):
         currentfile_layout = QHBoxLayout()
         currentfile_label = QLabel('Current file:')
         self.currentfilename_label = QLabel('')
+        self.currentfilename_label.setStyleSheet("border: 1px solid black;\
+                                                  background-color: white")
 
-        currentfile_layout.addWidget(currentfile_label)
-        currentfile_layout.addWidget(self.currentfilename_label)
+        currentfile_layout.addWidget(currentfile_label, stretch=0)
+        currentfile_layout.addWidget(self.currentfilename_label, stretch=10)
 
         self.dataset_list = QListWidget()
         self.dataset_list.setSelectionMode(1) # single selection
@@ -155,9 +157,9 @@ class MainWindow(QWidget):
         center_groupbox.setLayout(plot_layout)
 
         layout = QHBoxLayout()
-        layout.addWidget(left_groupbox, stretch=2)
+        layout.addWidget(left_groupbox, stretch=3)
         layout.addStretch()
-        layout.addWidget(center_groupbox, stretch=9)
+        layout.addWidget(center_groupbox, stretch=12)
         layout.addStretch()
         layout.addWidget(right_groupbox, stretch=2)
         
@@ -167,9 +169,14 @@ class MainWindow(QWidget):
         # CONNECTS
 
         load_button.clicked.connect(self.load_h5file)
-        clear_button.clicked.connect(self.clear_alldata)
-        # fit_button.clicked.connect(
-        #         lambda: self.fit(self.dataset_list.currentItem().text()))
+        reload_button.clicked.connect(self.reload_h5file)
+        clear_button.clicked.connect(self.clear_all)
+        choosedelta_button.clicked.connect(
+            lambda: self.choose_delta( self.dataset_list.currentItem().text() ))
+
+        fit_button.clicked.connect(
+            lambda: self.update_plots_fit(
+                        self.dataset_list.currentItem().text()))
 
         lowerbound_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('lowerb', x))
@@ -192,13 +199,19 @@ class MainWindow(QWidget):
             "Load HDF5 file", "","HDF5 file (*.h5)", 
             options=options)
 
+        # errors can pop if HDF5 file is not at the right place in arborescence.
+        # this will need to be solved, e.g. by recursively searching for 
+        # temperature measurements anywhere in the arborescence 
+
         if self.filepath != str():
             # read h5 file and store in self.data: 
             file = h5py.File(self.filepath, 'r')
             for nam, dat in file.items():
                 # get temperature measurements only
                 if 'measurement/T_planck' in dat:
-                    self.data[nam] = dat['measurement']
+                    if nam not in self.data:
+                        self.data[nam] = dat['measurement']
+                        self.dataset_list.addItem(nam)
 
             if len(self.data) == 0:
                 QMessageBox.about(self, 
@@ -207,15 +220,65 @@ class MainWindow(QWidget):
             else:
                 self.currentfilename_label.setText(
                                         self.filepath.split('/')[-1])
-                self.dataset_list.addItems(self.data.keys())
+
+    def reload_h5file(self):
+        if self.filepath != str():
+            # read h5 file and store in self.data: 
+            file = h5py.File(self.filepath, 'r')
+            for nam, dat in file.items():
+                # get temperature measurements only
+                if 'measurement/T_planck' in dat:
+                    if nam not in self.data:
+                        self.data[nam] = dat['measurement']
+                        self.dataset_list.addItem(nam)
+
+    def choose_delta(self, nam):
+        import matplotlib.pyplot as plt
+        fig_delta, ax_delta = plt.subplots()
+        ax_delta.set_xlabel('delta (px)')
+        ax_delta.set_ylabel('Two-color temperature std. dev (K)')
 
 
-    def clear_alldata(self):
+        # reread data... not ideal but it should work
+        lam = np.array( self.data[nam]['spectrum_lambdas'] )
+        y_planck = np.array( self.data[nam]['planck_data'] )
+        y_wien = wien(lam, y_planck)
+
+        within = np.logical_and(lam >= self.pars['lowerb'], 
+                                lam <= self.pars['upperb'])
+
+        alldeltas = np.array(range(300))
+        allstddevs = np.array( [temp2color(lam[within], y_wien[within], di).std() 
+                            for di in alldeltas ] )
+
+        ax_delta.scatter(alldeltas, 
+                         allstddevs,
+                         marker='X',
+                         edgecolor='k',
+                         color='royalblue',
+                         alpha=0.5,
+                         s=30)
+
+        ax_delta.set_ylim([0,1e3])
+        fig_delta.show()
+
+        def get_xclick(event): 
+            x = int(event.xdata)
+            print(x)
+
+        # click event
+        fig_delta.canvas.mpl_connect('button_press_event', get_xclick)
+
+
+    def clear_all(self):
         if self.filepath != str():
             self.filepath = str()
             self.currentfilename_label.setText('')
             self.data = dict()
             self.dataset_list.clear()
+
+            self.clear_plots()
+            self.canvas.draw()
 
     def clear_plots(self):
             # clear previous data on plots
@@ -237,10 +300,8 @@ class MainWindow(QWidget):
             self.canvas.axes[1,0].texts.clear()
             self.canvas.axes[1,1].texts.clear()
 
-
     def update_plots_fit(self, nam):
         if nam:
-
             self.clear_plots()
 
             # read data
@@ -251,25 +312,39 @@ class MainWindow(QWidget):
             within = np.logical_and(lam >= self.pars['lowerb'], 
                                     lam <= self.pars['upperb'])
 
+            # calculate 2color 
             y_2c = temp2color(lam[within], 
                               y_wien[within], 
                               self.pars['delta'])
-            
-            # Planck fit
-            p_planck, cov_planck = curve_fit(planck, 
-                                             lam[within], 
-                                             y_planck[within], 
-                                p0     = (    1e-6,   2000,        0),
-                                bounds =(( -np.inf,      0,        0),
-                                        (  +np.inf,    1e5,  +np.inf)),
-                                method = 'trf')
-            Tplanck = p_planck[1]
+            T2c = np.mean(y_2c)
 
             # Wien fit
             a, b = np.polyfit(1/lam[within], y_wien[within], 1)
-            Twien = 1e9 * 1/a
- 
-            
+            # calc Wien temperature and use it as initial value for Planck fit:
+            Twien = 1e9 * 1/a   
+
+            # Planck fit
+            # with bg:
+            if self.pars['bg']:
+                p_planck, cov_planck = curve_fit(planck, 
+                                                 lam[within], 
+                                                 y_planck[within], 
+                                    p0     = (    1e-6,  Twien,        0),
+                                    bounds =(( -np.inf,      0,        0),
+                                            (  +np.inf,    1e5,  +np.inf)))
+            # without bg (default):
+            else:
+                # for now done using boundaries... 
+                p_planck, cov_planck = curve_fit(planck, 
+                                                 lam[within], 
+                                                 y_planck[within], 
+                                    p0     = (    1e-6,   Twien,         0),
+                                    bounds =(( -np.inf,       0,  -1e-9),
+                                            (  +np.inf,     1e5,  +1e-9)))
+
+            # Planck temperature:
+            Tplanck = p_planck[1]
+
             # plot data
             self.canvas.axes[0,0].scatter(lam, 
                                           y_planck, 
@@ -295,19 +370,11 @@ class MainWindow(QWidget):
                                           s=15, 
                                           label='two-color data')
 
-            self.canvas.axes[1,1].hist(y_2c, 
+            h_y, h_x, _ = self.canvas.axes[1,1].hist(y_2c, 
                                        color='royalblue',
                                        bins = 50,
-                                       alpha=1, 
+                                       alpha=.6, 
                                        label='two-color histogram')
-
-            self.canvas.axes[1,0].set_xlim([self.pars['lowerb'],
-                                            self.pars['upperb']+20])
-            self.canvas.axes[1,0].set_ylim([np.mean(y_2c) - 5 * np.std(y_2c), 
-                                            np.mean(y_2c) + 5 * np.std(y_2c)])
-            self.canvas.axes[1,1].set_xlim([np.mean(y_2c) - 5 * np.std(y_2c),
-                                            np.mean(y_2c) + 5 * np.std(y_2c)])
-
 
             # plot fits:
             self.canvas.axes[0,0].plot(lam[within],
@@ -319,7 +386,7 @@ class MainWindow(QWidget):
                                        y_planck[within]-
                                        planck(lam[within], *p_planck), 
                                        color='gray',
-                                       alpha=0.2,
+                                       alpha=0.1,
                                        s=15, 
                                        label='residuals')
 
@@ -336,37 +403,83 @@ class MainWindow(QWidget):
             self.canvas.ax_wien_res.scatter( 1/lam[within], 
                                              y_wien[within] - ( a / lam[within] + b ), 
                                              color='gray',
-                                             alpha=0.2,
+                                             alpha=0.1,
                                              s=15, 
                                              label='residuals')
 
-
-
-            self.canvas.axes[0,0].text(0.1, 0.4, 
+            # texts on plots:
+            self.canvas.axes[0,0].text(0.1, 0.7, 
                                 'T$_\\mathrm{Planck}$= ' + 
                                 str( round(Tplanck) ) + 
                                 ' K', 
-                                size=15, 
+                                size=17, 
                                 color='r', 
+                                zorder=3,
                                 transform=self.canvas.axes[0,0].transAxes)
 
-            self.canvas.axes[0,1].text(0.4, 0.2, 
+            self.canvas.axes[0,1].text(0.1, 0.7, 
                                 'T$_\\mathrm{Wien}$= ' + 
                                 str( round(Twien) ) + 
                                 ' K', 
-                                size=15, 
+                                size=17, 
                                 color='r', 
+                                zorder=3,
                                 transform=self.canvas.axes[0,1].transAxes)
             
             self.canvas.axes[1,0].text(0.3, 0.7, 
                                 'T$_\\mathrm{two-color}$= ' + 
-                                str( round( np.mean(y_2c) ) ) + 
+                                str( round( T2c ) ) + 
                                 ' K', 
-                                size=15, 
+                                size=17, 
                                 color='r', 
+                                zorder=3,
                                 transform=self.canvas.axes[1,0].transAxes)
 
+            self.canvas.axes[1,1].text(0.1, 0.8, 
+                                'std dev. = ' + 
+                                str( round( np.std(y_2c) ) ) + 
+                                ' K', 
+                                size=17, 
+                                color='r', 
+                                zorder=3,
+                                transform=self.canvas.axes[1,1].transAxes)
 
+            # autoscales
+
+            # planck:
+            self.canvas.axes[0,0].set_xlim([self.pars['lowerb'] - 60, 
+                                            self.pars['upperb'] + 60]) 
+            self.canvas.axes[0,0].set_ylim([np.min( y_planck[within] - \
+                                                0.6*np.ptp(y_planck[within])),
+                                            np.max( y_planck[within] + \
+                                                0.6*np.ptp(y_planck[within]))])
+
+            self.canvas.ax_planck_res.set_ylim([
+                np.min( y_planck[within]-planck(lam[within], *p_planck) ),
+                np.max( y_planck[within]-planck(lam[within], *p_planck) ) ])
+
+            # wien:
+            self.canvas.axes[0,1].set_ylim([np.min( y_wien[within] - \
+                                                0.6*np.ptp(y_wien[within])),
+                                            np.max( y_wien[within] + \
+                                                0.6*np.ptp(y_wien[within]))])
+            self.canvas.ax_wien_res.set_ylim([
+                np.min( y_wien[within] - ( a / lam[within] + b ) ),
+                np.max( y_wien[within] - ( a / lam[within] + b ) )])
+
+            # 2color:
+            self.canvas.axes[1,0].set_xlim([self.pars['lowerb'],
+                                            self.pars['upperb']+20])
+            self.canvas.axes[1,0].set_ylim([np.mean(y_2c) - 5 * np.std(y_2c), 
+                                            np.mean(y_2c) + 5 * np.std(y_2c)])
+
+            # histogram
+            self.canvas.axes[1,1].set_xlim([np.mean(y_2c) - 5 * np.std(y_2c),
+                                            np.mean(y_2c) + 5 * np.std(y_2c)])
+            self.canvas.axes[1,1].set_ylim([0, np.max(h_y) + 10])
+
+
+            # legends
             self.canvas.axes[0,0].legend(loc='upper left')
             self.canvas.ax_planck_res.legend(loc='upper right')
             self.canvas.axes[0,1].legend(loc='upper left')   
@@ -376,11 +489,9 @@ class MainWindow(QWidget):
             
             self.canvas.draw()
 
-
-
-
-app = QApplication(sys.argv)
-window = MainWindow()
-window.show()
-
-app.exec()
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    
+    app.exec()
