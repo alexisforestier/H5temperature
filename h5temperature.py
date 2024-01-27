@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (QApplication,
                              QFileDialog,
                              QMessageBox)
 
-from h5temperature_Physics import planck, wien, temp2color
+from h5temperaturePhysics import planck, wien, temp2color
 
 class PlotsCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
