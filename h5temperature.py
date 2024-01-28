@@ -122,7 +122,7 @@ class MainWindow(QWidget):
         bg_checkbox.setChecked(self.pars.get('bg'))
 
         choosedelta_button = QPushButton('Choose delta')
-        fit_button = QPushButton('Fit')
+        fit_button = QPushButton('Re-fit')
 
         fitparam_form = QFormLayout()
         fitparam_form.addRow('Lower limit (nm):', lowerbound_spinbox)
@@ -190,47 +190,50 @@ class MainWindow(QWidget):
         self.dataset_list.currentTextChanged.connect(self.update_plots_fit)
 
 
+    def get_h5file_content(self):
+            # read h5 file and store in self.data: 
+            file = h5py.File(self.filepath, 'r')
+            for nam, dat in file.items():
+                # /!\ when hdf5 files are open in another thread
+                # it seems to lead to None in the entire subgroup...
+                # this will need to be checked again...:
+                if dat is not None: 
+                    # get temperature measurements only
+                    if 'measurement/T_planck' in dat:
+                        # not already loaded only:
+                        if nam not in self.data:
+                            # populate data:
+                            self.data[nam] = dat['measurement']
+                            # populate dataset list widget:
+                            self.dataset_list.addItem(nam)
+        # errors can pop if HDF5 file is not at the right place in arborescence.
+        # this will need to be solved, e.g. by recursively searching for 
+        # temperature measurements anywhere in the arborescence 
+            file.close()
+
+
     def load_h5file(self):
         options = QFileDialog.Options()
         # ! use Native dialog or qt dialog... 
-        # ! Must be checked on different platforms
+        # ! Must be checked on different platforms !
+
     #   options |= QFileDialog.DontUseNativeDialog
         self.filepath, _ = QFileDialog.getOpenFileName(self,
             "Load HDF5 file", "","HDF5 file (*.h5)", 
             options=options)
 
-        # errors can pop if HDF5 file is not at the right place in arborescence.
-        # this will need to be solved, e.g. by recursively searching for 
-        # temperature measurements anywhere in the arborescence 
-
-        if self.filepath != str():
-            # read h5 file and store in self.data: 
-            file = h5py.File(self.filepath, 'r')
-            for nam, dat in file.items():
-                # get temperature measurements only
-                if 'measurement/T_planck' in dat:
-                    if nam not in self.data:
-                        self.data[nam] = dat['measurement']
-                        self.dataset_list.addItem(nam)
-
-            if len(self.data) == 0:
-                QMessageBox.about(self, 
-                    "Message", "No temperature data available in HDF5 file.")
-                self.filepath = str()
-            else:
-                self.currentfilename_label.setText(
-                                        self.filepath.split('/')[-1])
+        if self.filepath:
+            self.get_h5file_content()
+            self.currentfilename_label.setText(self.filepath.split('/')[-1])
+ 
 
     def reload_h5file(self):
-        if self.filepath != str():
-            # read h5 file and store in self.data: 
-            file = h5py.File(self.filepath, 'r')
-            for nam, dat in file.items():
-                # get temperature measurements only
-                if 'measurement/T_planck' in dat:
-                    if nam not in self.data:
-                        self.data[nam] = dat['measurement']
-                        self.dataset_list.addItem(nam)
+        if self.filepath:
+            self.get_h5file_content()
+
+
+
+
 
     def choose_delta(self, nam):
         import matplotlib.pyplot as plt
@@ -271,20 +274,20 @@ class MainWindow(QWidget):
 
 
     def clear_all(self):
-        if self.filepath != str():
-            self.filepath = str()
-            self.currentfilename_label.setText('')
-            self.data = dict()
-            self.dataset_list.clear()
+        self.filepath = str()
+        self.currentfilename_label.setText('')
+        self.data = dict()
+        self.dataset_list.clear()
 
-            self.clear_plots()
-            self.canvas.draw()
+        self.clear_plots()
+        self.canvas.draw()
 
     def clear_plots(self):
             # clear previous data on plots
             self.canvas.axes[0,0].collections.clear()
             self.canvas.axes[0,1].collections.clear()
             self.canvas.axes[1,0].collections.clear()
+            # to remove histogram bars:
             _ = [b.remove() for b in self.canvas.axes[1,1].containers]
 
             self.canvas.ax_planck_res.collections.clear()
@@ -444,25 +447,30 @@ class MainWindow(QWidget):
                                 zorder=3,
                                 transform=self.canvas.axes[1,1].transAxes)
 
-            # autoscales
+
+
+            # Autoscale:
 
             # planck:
-            self.canvas.axes[0,0].set_xlim([self.pars['lowerb'] - 60, 
-                                            self.pars['upperb'] + 60]) 
+
+            self.canvas.axes[0,0].set_xlim([self.pars['lowerb'] - 100, 
+                                            self.pars['upperb'] + 100]) 
             self.canvas.axes[0,0].set_ylim([np.min( y_planck[within] - \
-                                                0.6*np.ptp(y_planck[within])),
+                                                0.5*np.ptp(y_planck[within])),
                                             np.max( y_planck[within] + \
-                                                0.6*np.ptp(y_planck[within]))])
+                                                0.5*np.ptp(y_planck[within]))])
 
             self.canvas.ax_planck_res.set_ylim([
                 np.min( y_planck[within]-planck(lam[within], *p_planck) ),
                 np.max( y_planck[within]-planck(lam[within], *p_planck) ) ])
 
             # wien:
+            self.canvas.axes[0,1].set_xlim([np.min( 1/lam[within] - 0.0002 ),
+                                            np.max( 1/lam[within] + 0.0002 )])
             self.canvas.axes[0,1].set_ylim([np.min( y_wien[within] - \
-                                                0.6*np.ptp(y_wien[within])),
+                                                0.5*np.ptp(y_wien[within])),
                                             np.max( y_wien[within] + \
-                                                0.6*np.ptp(y_wien[within]))])
+                                                0.5*np.ptp(y_wien[within]))])
             self.canvas.ax_wien_res.set_ylim([
                 np.min( y_wien[within] - ( a / lam[within] + b ) ),
                 np.max( y_wien[within] - ( a / lam[within] + b ) )])
