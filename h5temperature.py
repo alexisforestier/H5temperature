@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-import pandas as pd
+#import pandas as pd
 import h5py
 from scipy.optimize import curve_fit
 import matplotlib.pyplot
@@ -197,6 +197,7 @@ class MainWindow(QWidget):
                 # /!\ when hdf5 files are open in another thread
                 # it seems to lead to None in the entire subgroup...
                 # this will need to be checked again...:
+                # Can the last measured T be opened or not?
                 if dat is not None: 
                     # get temperature measurements only
                     if 'measurement/T_planck' in dat:
@@ -206,9 +207,9 @@ class MainWindow(QWidget):
                             self.data[nam] = dat['measurement']
                             # populate dataset list widget:
                             self.dataset_list.addItem(nam)
-        # errors can pop if HDF5 file is not at the right place in arborescence.
-        # this will need to be solved, e.g. by recursively searching for 
-        # temperature measurements anywhere in the arborescence 
+    # errors can pop if HDF5 file is not at the right place in arborescence.
+    # this will need to be solved, e.g. by recursively searching for 
+    # temperature measurements anywhere in the arborescence 
             file.close()
 
 
@@ -283,25 +284,25 @@ class MainWindow(QWidget):
         self.canvas.draw()
 
     def clear_plots(self):
-            # clear previous data on plots
-            self.canvas.axes[0,0].collections.clear()
-            self.canvas.axes[0,1].collections.clear()
-            self.canvas.axes[1,0].collections.clear()
-            # to remove histogram bars:
-            _ = [b.remove() for b in self.canvas.axes[1,1].containers]
+        # clear previous data on plots
+        self.canvas.axes[0,0].collections.clear()
+        self.canvas.axes[0,1].collections.clear()
+        self.canvas.axes[1,0].collections.clear()
+        # to remove histogram bars:
+        _ = [b.remove() for b in self.canvas.axes[1,1].containers]
 
-            self.canvas.ax_planck_res.collections.clear()
-            self.canvas.ax_wien_res.collections.clear()
+        self.canvas.ax_planck_res.collections.clear()
+        self.canvas.ax_wien_res.collections.clear()
 
-            self.canvas.axes[0,0].lines.clear()
-            self.canvas.axes[0,1].lines.clear()
-            self.canvas.axes[1,0].lines.clear()
-            self.canvas.axes[1,1].lines.clear()
+        self.canvas.axes[0,0].lines.clear()
+        self.canvas.axes[0,1].lines.clear()
+        self.canvas.axes[1,0].lines.clear()
+        self.canvas.axes[1,1].lines.clear()
 
-            self.canvas.axes[0,0].texts.clear()
-            self.canvas.axes[0,1].texts.clear()
-            self.canvas.axes[1,0].texts.clear()
-            self.canvas.axes[1,1].texts.clear()
+        self.canvas.axes[0,0].texts.clear()
+        self.canvas.axes[0,1].texts.clear()
+        self.canvas.axes[1,0].texts.clear()
+        self.canvas.axes[1,1].texts.clear()
 
     def update_plots_fit(self, nam):
         if nam:
