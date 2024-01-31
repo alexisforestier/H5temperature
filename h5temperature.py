@@ -64,8 +64,7 @@ class MainWindow(QWidget):
         # parameters and their default values
         self.pars = dict(lowerb = 550,
                          upperb = 900,
-                         delta = 100, 
-                         bg = False)
+                         delta = 100)
 
         # LAYOUTS
 
@@ -118,9 +117,6 @@ class MainWindow(QWidget):
         upperbound_spinbox.setValue(self.pars.get('upperb'))
         delta_spinbox.setValue(self.pars.get('delta'))
 
-        bg_checkbox = QCheckBox('Fit Planck background')
-        bg_checkbox.setChecked(self.pars.get('bg'))
-
         choosedelta_button = QPushButton('Choose delta')
         fit_button = QPushButton('Re-fit')
 
@@ -132,7 +128,6 @@ class MainWindow(QWidget):
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
         fit_layout.addWidget(choosedelta_button)
-        fit_layout.addWidget(bg_checkbox)
         fit_layout.addWidget(fit_button)
         fit_layout.addStretch()
 
@@ -184,15 +179,17 @@ class MainWindow(QWidget):
                 lambda x: self.pars.__setitem__('upperb', x))
         delta_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('delta', x))
-        bg_checkbox.stateChanged.connect(
-                lambda b: self.pars.__setitem__('bg', b))
 
         self.dataset_list.currentTextChanged.connect(self.update_plots_fit)
 
 
     def get_h5file_content(self):
             # read h5 file and store in self.data: 
-            file = h5py.File(self.filepath, 'r')
+            with h5py.File(self.filepath, 'r') as file:
+
+
+
+                
             for nam, dat in file.items():
                 # /!\ when hdf5 files are open in another thread
                 # it seems to lead to None in the entire subgroup...
@@ -210,7 +207,6 @@ class MainWindow(QWidget):
     # errors can pop if HDF5 file is not at the right place in arborescence.
     # this will need to be solved, e.g. by recursively searching for 
     # temperature measurements anywhere in the arborescence 
-            file.close()
 
 
     def load_h5file(self):

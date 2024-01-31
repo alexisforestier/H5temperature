@@ -1,11 +1,7 @@
 import numpy as np 
-#import pandas as pd
 import h5py
 import datetime
 from scipy.optimize import curve_fit
-
-import os
-os.chdir('/home/alex/python/h5temperature')
 
 import h5temperaturePhysics
 
@@ -19,66 +15,70 @@ class BlackBodyFromh5():
 
         self.lam = np.array(group['measurement/spectrum_lambdas'])
         self.planck = np.array(group['measurement/planck_data'])
-        
-        self.invlam = 1/self.lam
+
         self.wien = h5temperaturePhysics.wien(self.lam, self.planck)
 
-    def twocolor(self, interval, delta):
+        self.twocolor = None
+        self.T_std_twocolor = None
+
+        self.wien_fit = None
+        self.wien_residuals = None
+        self.T_wien = None
+
+        self.planck_fit = None
+        self.planck_residuals = None
+        self.T_planck = None
+
+    def lam_infit(self, interval):
+        within = np.logical_and(self.lam >= interval[0], 
+                                self.lam <= interval[1])
+        return self.lam[within]
+
+    def eval_twocolor(self, interval, delta):
         # interval as a tuple (min, max)
         within = np.logical_and(self.lam >= interval[0], 
                                 self.lam <= interval[1])
         # calculate 2color 
-        y_2c = h5temperaturePhysics.temp2color(self.lam[within], 
+        self.twocolor = h5temperaturePhysics.temp2color(
+                        self.lam[within], 
+                        self.wien[within], 
+                        delta)
+
+        self.T_twocolor = np.mean(self.twocolor)
+        self.T_std_twocolor = np.std(self.twocolor)
+
+    def eval_wien_fit(self, interval):
+        # interval as a tuple (min, max)
+        within = np.logical_and(self.lam >= interval[0], 
+                                self.lam <= interval[1])
+
+        a, b = np.polyfit(1/self.lam[within], 
                           self.wien[within], 
-                          delta)
-        return y_2c
-
-    def wien_fit(self, interval):
-        # interval as a tuple (min, max)    
-        within = np.logical_and(self.lam >= interval[0], 
-                                self.lam <= interval[1])
-
-        a, b = np.polyfit(1/self.lam[within], self.wien[within], 1)
+                          1) # order = 1, linear
         
-        x = self.invlam[within]
-        y = a/self.lam[within] + b
-        r = self.wien[within] - y
-        T = 1e9 * 1/a # in K
+        self.wien_fit = a/self.lam[within] + b
+        self.wien_residuals = self.wien[within] - self.wien_fit
+        self.T_wien = 1e9 * 1/a # in K
 
-        return x, y, r, T
-
-    def planck_fit(self, interval):
+    def eval_planck_fit(self, interval):
+        # interval as a tuple (min, max)
         within = np.logical_and(self.lam >= interval[0], 
                                 self.lam <= interval[1])
 
-        Tguess = self.wien_fit(interval)[3]
+        if self.T_wien:
+            Tguess = self.T_wien
+        else:
+            Tguess = 2000
 
         p_planck, cov_planck = curve_fit(h5temperaturePhysics.planck, 
                                          self.lam[within], 
                                          self.planck[within], 
-                                    p0     = (    1e-6,  Tguess,        0),
-                                    bounds =(( -np.inf,       0,        0),
-                                            (  +np.inf,     1e5,  +np.inf)))    
-        x = self.lam[within]
-        y = h5temperaturePhysics.planck(x, *p_planck)
-        r = self.planck[within] - y
-        T = p_planck[1]
-        
-        return x, y, r, T
+                                                 # eps,   temp
+                                    p0     = (    1e-6,  Tguess),
+                                    bounds =(( -np.inf,       0),
+                                            (  +np.inf,     1e5)))    
 
-#if __name__ == '__main__':
-
-path= '/media/alex/Data1/ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/hc5078_CDMX18.h5'
-    
-with h5py.File(path, 'r') as f: 
-    a = f['CDMX18_mesh01_18.1']
-
-
-test = BlackBodyFromh5(a)
-
-import matplotlib.pyplot as plt
-
-
-plt.plot(test.lam, test.planck)
-plt.plot(test.planck_fit( (600, 900) )[0], test.planck_fit( (600, 900) )[1]) 
-plt.show()
+        self.planck_fit = h5temperaturePhysics.planck(self.lam[within], 
+                                                        *p_planck)
+        self.planck_residuals = self.planck[within] - self.planck_fit
+        self.T_planck = p_planck[1]

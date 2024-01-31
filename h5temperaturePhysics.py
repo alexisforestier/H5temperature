@@ -5,10 +5,10 @@ c = 299792458 # Speed of light in m/s
 k = 1.380649 * 1e-23 # Boltzmann constant in J/K
 
 # all function takes lamb in nm
-def planck(lamb, eps, temp, b=0):
+def planck(lamb, eps, temp):
     lamb = lamb * 1e-9 # now in meters
-    f = ( eps * ( 2*np.pi*h*c**2 / (lamb**5) ) * 
-         1 / ( np.exp(h * c / (lamb * k * temp)) - 1 ) + b )
+    f =  ( eps * ( 2*np.pi*h*c**2 / (lamb**5) ) * 
+         1 / ( np.exp(h * c / (lamb * k * temp)) - 1 ) )
     return f
 
 def wien(lamb, I):
