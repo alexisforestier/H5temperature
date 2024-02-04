@@ -6,8 +6,9 @@ from scipy.optimize import curve_fit
 import h5temperaturePhysics
 
 class BlackBodyFromh5():
-    def __init__(self, group):
+    def __init__(self, group, name):
 
+        self.name = name
         t1 = str(np.array(group['end_time'])[()])
         self.time = datetime.datetime.strptime(t1, 
                         "b'%Y-%m-%dT%H:%M:%S.%f%z'")
@@ -82,3 +83,13 @@ class BlackBodyFromh5():
                                                         *p_planck)
         self.planck_residuals = self.planck[within] - self.planck_fit
         self.T_planck = p_planck[1]
+
+
+if __name__ == '__main__':
+
+    i = 0 
+    with h5py.File('/media/alex/Data1/ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/hc5078_CDMX18.h5', 'r') as file:
+        for k, v in file.items():
+            if 'measurement/T_planck' in v:
+                i+=1
+    print(i)
