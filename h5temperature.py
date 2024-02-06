@@ -41,6 +41,8 @@ class ChooseDeltaWindow(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.resize(500,400)
+
         self.setWindowTitle('Choose delta...')
 
         self.canvas = SinglePlotCanvas(self)
@@ -130,19 +132,19 @@ class MainWindow(QWidget):
         # right layout
         lowerbound_spinbox = QSpinBox()
         upperbound_spinbox = QSpinBox()
-        delta_spinbox = QSpinBox()
+        self.delta_spinbox = QSpinBox()
 
         lowerbound_spinbox.setMinimum(1)
         upperbound_spinbox.setMinimum(1)
-        delta_spinbox.setMinimum(1)
+        self.delta_spinbox.setMinimum(1)
         lowerbound_spinbox.setMaximum(9999)
         upperbound_spinbox.setMaximum(9999)
-        delta_spinbox.setMaximum(9999)
+        self.delta_spinbox.setMaximum(9999)
         
         # default values:
         lowerbound_spinbox.setValue(self.pars.get('lowerb'))
         upperbound_spinbox.setValue(self.pars.get('upperb'))
-        delta_spinbox.setValue(self.pars.get('delta'))
+        self.delta_spinbox.setValue(self.pars.get('delta'))
 
         choosedelta_button = QPushButton('Choose delta')
         fit_button = QPushButton('Fit')
@@ -150,7 +152,7 @@ class MainWindow(QWidget):
         fitparam_form = QFormLayout()
         fitparam_form.addRow('Lower limit (nm):', lowerbound_spinbox)
         fitparam_form.addRow('Upper limit (nm):', upperbound_spinbox)
-        fitparam_form.addRow('2-color delta (px):', delta_spinbox)
+        fitparam_form.addRow('2-color delta (px):', self.delta_spinbox)
         
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
@@ -203,7 +205,7 @@ class MainWindow(QWidget):
                 lambda x: self.pars.__setitem__('lowerb', x))
         upperbound_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('upperb', x))
-        delta_spinbox.valueChanged.connect(
+        self.delta_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('delta', x))
 
         self.dataset_list.currentTextChanged.connect(self.update)
@@ -283,14 +285,18 @@ class MainWindow(QWidget):
                                                s=30)
 
         self.choosedelta_win.canvas.ax.set_ylim([0,2e3])
+
+        self.choosedelta_win.canvas.draw()
         self.choosedelta_win.show()
 
-#        def get_xclick(event): 
-#            x = int(event.xdata)
-#            print(x)
-#
-#        # click event
-#        fig_delta.canvas.mpl_connect('button_press_event', get_xclick)
+        def get_xclick(event):
+            x = int(event.xdata)
+            self.delta_spinbox.setValue(x)
+            self.update(nam)
+
+        # click event
+        self.choosedelta_win.canvas.mpl_connect('button_press_event', 
+                            get_xclick)
 
 
     def clear_all(self):
