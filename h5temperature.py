@@ -23,8 +23,34 @@ from PyQt5.QtWidgets import (QApplication,
                              QFileDialog,
                              QMessageBox)
 
-#from h5temperaturePhysics import planck, wien, temp2color
+from h5temperaturePhysics import temp2color
 from h5temperatureModels import BlackBodyFromh5
+
+
+class SinglePlotCanvas(FigureCanvasQTAgg):
+    def __init__(self, parent=None):
+        self.fig, self.ax = matplotlib.pyplot.subplots(
+            constrained_layout=True)
+
+        self.ax.set_xlabel('delta (px)')
+        self.ax.set_ylabel('two-color temperature std deviation (K)')
+
+        super(SinglePlotCanvas, self).__init__(self.fig)
+
+class ChooseDeltaWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle('Choose delta...')
+
+        self.canvas = SinglePlotCanvas(self)
+        self.toolbar = NavigationToolbar2QT(self.canvas, self)     
+        self.toolbar.setStyleSheet("font-size: 16px;")
+        layout = QVBoxLayout()
+        layout.addWidget(self.toolbar)
+        layout.addWidget(self.canvas)
+
+        self.setLayout(layout)
 
 class PlotsCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
@@ -59,10 +85,11 @@ class MainWindow(QWidget):
         super().__init__()
 
         self.resize(1500,900)
-        
+
         # data stored in self
         self.filepath = str()
         self.data = dict()
+
         # parameters and their default values
         self.pars = dict(lowerb = 550,
                          upperb = 900,
@@ -118,7 +145,7 @@ class MainWindow(QWidget):
         delta_spinbox.setValue(self.pars.get('delta'))
 
         choosedelta_button = QPushButton('Choose delta')
-        fit_button = QPushButton('Re-fit')
+        fit_button = QPushButton('Fit')
 
         fitparam_form = QFormLayout()
         fitparam_form.addRow('Lower limit (nm):', lowerbound_spinbox)
@@ -150,6 +177,10 @@ class MainWindow(QWidget):
 
         center_groupbox.setLayout(plot_layout)
 
+        # setup choosedelta window
+        self.choosedelta_win = ChooseDeltaWindow()
+        self.choosedelta_win.setStyleSheet("background-color: white")
+
         layout = QHBoxLayout()
         layout.addWidget(left_groupbox, stretch=3)
         layout.addStretch()
@@ -164,12 +195,9 @@ class MainWindow(QWidget):
         load_button.clicked.connect(self.load_h5file)
         reload_button.clicked.connect(self.reload_h5file)
         clear_button.clicked.connect(self.clear_all)
+
         choosedelta_button.clicked.connect(
             lambda: self.choose_delta( self.dataset_list.currentItem().text() ))
-
-        fit_button.clicked.connect(
-            lambda: self.update_plots_fit(
-                        self.dataset_list.currentItem().text()))
 
         lowerbound_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('lowerb', x))
@@ -180,6 +208,10 @@ class MainWindow(QWidget):
 
         self.dataset_list.currentTextChanged.connect(self.update)
 
+        fit_button.clicked.connect(lambda: 
+            self.update( self.dataset_list.currentItem().text()) )
+
+
     def get_h5file_content(self):
         # read h5 file and store in self.data: 
         with h5py.File(self.filepath, 'r') as file:
@@ -187,7 +219,7 @@ class MainWindow(QWidget):
             # /!\ when hdf5 files are open in another thread
             # it seems to lead to None in the entire subgroup...
             # this will need to be checked again...:
-            # Can the last measured T be opened or not?
+            # Can the last measured T be opened or not on the beamline?
                 if dat is not None: 
                 # get temperature measurements only
                     if 'measurement/T_planck' in dat:
@@ -225,42 +257,34 @@ class MainWindow(QWidget):
             self.get_h5file_content()
             self.populate_dataset_list()
             self.currentfilename_label.setText(self.filepath.split('/')[-1])
- 
+
     def reload_h5file(self):
         if self.filepath:
             self.get_h5file_content()
             self.populate_dataset_list()
 
     def choose_delta(self, nam):
-        import matplotlib.pyplot as plt
-#        fig_delta, ax_delta = plt.subplots()
-#        ax_delta.set_xlabel('delta (px)')
-#        ax_delta.set_ylabel('Two-color temperature std. dev (K)')
-#
-#
-#        # reread data... not ideal but it should work
-#        lam = np.array( self.data[nam]['spectrum_lambdas'] )
-#        y_planck = np.array( self.data[nam]['planck_data'] )
-#        y_wien = wien(lam, y_planck)
-#
-#        within = np.logical_and(lam >= self.pars['lowerb'], 
-#                                lam <= self.pars['upperb'])
-#
-#        alldeltas = np.array(range(300))
-#        allstddevs = np.array( [temp2color(lam[within], y_wien[within], di).std() 
-#                            for di in alldeltas ] )
-#
-#        ax_delta.scatter(alldeltas, 
-#                         allstddevs,
-#                         marker='X',
-#                         edgecolor='k',
-#                         color='royalblue',
-#                         alpha=0.5,
-#                         s=30)
-#
-#        ax_delta.set_ylim([0,1e3])
-#        fig_delta.show()
-#
+
+        current = self.data[nam]
+
+        self.choosedelta_win.canvas.ax.collections.clear()
+
+        alldeltas = np.array(range(300))
+        allstddevs = np.array( [temp2color(current.lam_infit(), 
+                                current.wien[current._within], di).std() 
+                                for di in alldeltas ] )
+
+        self.choosedelta_win.canvas.ax.scatter(alldeltas, 
+                                               allstddevs,
+                                               marker='X',
+                                               edgecolor='k',
+                                               color='royalblue',
+                                               alpha=0.5,
+                                               s=30)
+
+        self.choosedelta_win.canvas.ax.set_ylim([0,2e3])
+        self.choosedelta_win.show()
+
 #        def get_xclick(event): 
 #            x = int(event.xdata)
 #            print(x)
@@ -299,26 +323,34 @@ class MainWindow(QWidget):
         self.canvas.axes[1,0].texts.clear()
         self.canvas.axes[1,1].texts.clear()
 
-    def eval_fits(self, nam, interval, delta):
+    def eval_fits(self, nam):
         # eval all quantities for a given spectrum
+        current = self.data[nam]
         try:
-            self.data[nam].eval_twocolor(interval, delta)
-            self.data[nam].eval_wien_fit(interval)
-            self.data[nam].eval_planck_fit(interval)
+            current.eval_twocolor()
+            current.eval_wien_fit()
+            current.eval_planck_fit()
+
         except Exception:
             traceback.print_exc()
 
     def update(self, nam):
-        interval = self.pars['lowerb'], self.pars['upperb']
+        # I nam otherwise crash at clear_all()
+        if nam:
+            current = self.data[nam]
+            interval = self.pars['lowerb'], self.pars['upperb']
+            delta = self.pars['delta']
 
-        self.clear_plots()
-        self.plot_data(nam)
+            self.clear_plots()
+            self.plot_data(nam)
 
-        # do something to check if fit was already calculated...
+            # if parameters have changed then we fit again
+            if not np.logical_and(interval == current.interval,
+                                  delta == current.delta):
+                current.set_interval_and_delta(interval, delta)
+                self.eval_fits(nam)
 
-        self.eval_fits(nam, interval, self.pars['delta'])
-        self.plot_fits(nam)
-
+            self.plot_fits(nam)
 
     def plot_data(self, nam):
         # plot data
@@ -340,13 +372,14 @@ class MainWindow(QWidget):
                                       s=15, 
                                       label='Wien data')
 
+       # self.update_legends()
+
     def plot_fits(self, nam):
 
         current = self.data[nam]
-        interval = [self.pars['lowerb'], self.pars['upperb']]
 
         self.canvas.axes[1,0].scatter(
-            current.lam_infit(interval)[:-self.pars['delta']], 
+            current.lam_infit()[:-self.pars['delta']], 
             current.twocolor, 
             edgecolor='k',
             facecolor='royalblue',
@@ -361,19 +394,20 @@ class MainWindow(QWidget):
                                    label='two-color histogram')
 
         # plot fits:
-        self.canvas.axes[0,0].plot(current.lam_infit(interval),
+        self.canvas.axes[0,0].plot(current.lam_infit(),
                                    current.planck_fit,
                                    color='r',
                                    linewidth=2,
                                    label='Planck fit')
-        self.canvas.ax_planck_res.scatter(current.lam_infit(interval), 
+
+        self.canvas.ax_planck_res.scatter(current.lam_infit(), 
                                           current.planck_residuals, 
                                           color='gray',
                                           alpha=0.1,
                                           s=15, 
                                           label='residuals')
 
-        self.canvas.axes[0,1].plot(1 / current.lam_infit(interval), 
+        self.canvas.axes[0,1].plot(1 / current.lam_infit(), 
                                    current.wien_fit, 
                                    c='r', 
                                    linewidth=2, 
@@ -384,7 +418,7 @@ class MainWindow(QWidget):
                                       linestyle='dashed',
                                       label='mean')            
         
-        self.canvas.ax_wien_res.scatter(1 / current.lam_infit(interval), 
+        self.canvas.ax_wien_res.scatter(1 / current.lam_infit(), 
                                         current.wien_residuals, 
                                         color='gray',
                                         alpha=0.1,
@@ -427,10 +461,11 @@ class MainWindow(QWidget):
                             color='r', 
                             zorder=3,
                                 transform=self.canvas.axes[1,1].transAxes)
-        # Autoscale:
+
+        # Custom Autoscales...
         # planck:
-        self.canvas.axes[0,0].set_xlim([self.pars['lowerb'] - 100, 
-                                        self.pars['upperb'] + 100]) 
+        self.canvas.axes[0,0].set_xlim([current.interval[0] - 100, 
+                                        current.interval[1] + 100]) 
 
         self.canvas.axes[0,0].set_ylim([np.min( current.planck_fit - \
                                             0.5*np.ptp(current.planck_fit)),
@@ -443,8 +478,8 @@ class MainWindow(QWidget):
 
         # wien:
         self.canvas.axes[0,1].set_xlim(
-            [np.min( 1/current.lam_infit(interval) - 0.0002 ),
-             np.max( 1/current.lam_infit(interval) + 0.0002 )])
+            [np.min( 1 / current.lam_infit() - 0.0002 ),
+             np.max( 1 / current.lam_infit() + 0.0002 )])
 
         self.canvas.axes[0,1].set_ylim([np.min( current.wien_fit - \
                                             0.5*np.ptp(current.wien_fit)),
@@ -455,8 +490,8 @@ class MainWindow(QWidget):
             np.max( current.wien_fit )])
 
         # 2color:
-        self.canvas.axes[1,0].set_xlim([self.pars['lowerb'],
-                                        self.pars['upperb']+20])
+        self.canvas.axes[1,0].set_xlim([current.interval[0],
+                                        current.interval[1] + 20])
         self.canvas.axes[1,0].set_ylim(
             [current.T_twocolor - 5 * current.T_std_twocolor, 
              current.T_twocolor + 5 * current.T_std_twocolor])
@@ -467,6 +502,12 @@ class MainWindow(QWidget):
              current.T_twocolor + 5 * current.T_std_twocolor])
         self.canvas.axes[1,1].set_ylim([0, np.max(h_y) + 10])
 
+
+        self.update_legends()
+        self.canvas.draw()
+
+
+    def update_legends(self):
         # legends
         self.canvas.axes[0,0].legend(loc='upper left')
         self.canvas.ax_planck_res.legend(loc='upper right')
@@ -474,8 +515,7 @@ class MainWindow(QWidget):
         self.canvas.ax_wien_res.legend(loc='upper right')
         self.canvas.axes[1,0].legend() 
         self.canvas.axes[1,1].legend()
-            
-        self.canvas.draw()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
