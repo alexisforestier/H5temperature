@@ -1,11 +1,9 @@
 import sys
 import numpy as np
 import traceback
-#import pandas as pd
 import h5py
 from scipy.optimize import curve_fit
 import matplotlib.pyplot
-import matplotlib
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from PyQt5.QtWidgets import (QApplication, 
