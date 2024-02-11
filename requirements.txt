@@ -1,7 +1,8 @@
-h5py
-matplotlib<=3.5.1
 numpy
-pyinstaller
+matplotlib
+Pillow
 PyQt5
-python-dateutil
 scipy
+h5py
+pyinstaller
+python-dateutil

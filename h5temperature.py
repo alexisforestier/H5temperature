@@ -3,7 +3,8 @@ import numpy as np
 import traceback
 import h5py
 from scipy.optimize import curve_fit
-import matplotlib.pyplot
+import matplotlib
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from PyQt5.QtWidgets import (QApplication, 
@@ -267,7 +268,8 @@ class MainWindow(QWidget):
 
         current = self.data[nam]
 
-        self.choosedelta_win.canvas.ax.collections.clear()
+        _ = [c.remove() for c in self.choosedelta_win.canvas.ax.collections]
+        #self.choosedelta_win.canvas.ax.collections.clear()
 
         alldeltas = np.array(range(300))
         allstddevs = np.array( [temp2color(current.lam_infit(), 
@@ -308,24 +310,42 @@ class MainWindow(QWidget):
 
     def clear_plots(self):
         # clear previous data on plots
-        self.canvas.axes[0,0].collections.clear()
-        self.canvas.axes[0,1].collections.clear()
-        self.canvas.axes[1,0].collections.clear()
+
+        # seems to be necessary to loop since new version of matplotlib..
+        _ = [c.remove() for c in self.canvas.axes[0,0].collections]
+        _ = [c.remove() for c in self.canvas.axes[0,1].collections]
+        _ = [c.remove() for c in self.canvas.axes[1,0].collections]
+        #self.canvas.axes[0,0].collections.clear()
+        #self.canvas.axes[0,1].collections.clear()
+        #self.canvas.axes[1,0].collections.clear()
+        
         # to remove histogram bars:
         _ = [b.remove() for b in self.canvas.axes[1,1].containers]
 
-        self.canvas.ax_planck_res.collections.clear()
-        self.canvas.ax_wien_res.collections.clear()
+        _ = [c.remove() for c in self.canvas.ax_planck_res.collections]
+        _ = [c.remove() for c in self.canvas.ax_wien_res.collections]
+        
+        #self.canvas.ax_planck_res.collections.clear()
+        #self.canvas.ax_wien_res.collections.clear()
 
-        self.canvas.axes[0,0].lines.clear()
-        self.canvas.axes[0,1].lines.clear()
-        self.canvas.axes[1,0].lines.clear()
-        self.canvas.axes[1,1].lines.clear()
+        
+        _ = [l.remove() for l in self.canvas.axes[0,0].lines]
+        _ = [l.remove() for l in self.canvas.axes[0,1].lines]
+        _ = [l.remove() for l in self.canvas.axes[1,0].lines]
+        _ = [l.remove() for l in self.canvas.axes[1,1].lines]
+        #self.canvas.axes[0,0].lines.clear()
+        #self.canvas.axes[0,1].lines.clear()
+        #self.canvas.axes[1,0].lines.clear()
+        #self.canvas.axes[1,1].lines.clear()
 
-        self.canvas.axes[0,0].texts.clear()
-        self.canvas.axes[0,1].texts.clear()
-        self.canvas.axes[1,0].texts.clear()
-        self.canvas.axes[1,1].texts.clear()
+        _ = [t.remove() for t in self.canvas.axes[0,0].texts]
+        _ = [t.remove() for t in self.canvas.axes[0,1].texts]
+        _ = [t.remove() for t in self.canvas.axes[1,0].texts]
+        _ = [t.remove() for t in self.canvas.axes[1,1].texts]
+        #self.canvas.axes[0,0].texts.clear()
+        #self.canvas.axes[0,1].texts.clear()
+        #self.canvas.axes[1,0].texts.clear()
+        #self.canvas.axes[1,1].texts.clear()
 
     def eval_fits(self, nam):
         # eval all quantities for a given spectrum
