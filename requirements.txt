@@ -1,5 +1,5 @@
 h5py
-matplotlib==3.3.4
+matplotlib<=3.5.1
 numpy
 pyinstaller
 PyQt5
