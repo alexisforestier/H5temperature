@@ -45,7 +45,7 @@ Tested on Windows 10 only.
 
 ## Use 
 
-Use the "Load h5" button to load a specific HDF5 file. Currently, you must open the .h5 file corresponding to a **newdataset('Datasetname')** created from BLISS, typically named *ProposalnameDatasetname.h5*.  
+Use the "Load h5" button to load a specific HDF5 file. **Currently, you must open the .h5 file corresponding to a *newsample('Samplename')* created from BLISS, typically named *Proposalname_Samplename.h5*.** 
 All temperature measurements within this file will be displayed.
 
 A first fitting is performed automatically upon clicking. If you make changes to the parameters, click "Fit" to apply them. 
