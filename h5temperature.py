@@ -231,10 +231,17 @@ class MainWindow(QWidget):
 
     def populate_dataset_list(self):
         if self.data:
-            # sort datasets in chronological order
-            names_chrono = sorted(self.data.keys(), 
+            try:
+                # sort datasets in chronological order
+                names_chrono = sorted(self.data.keys(), 
                             key = lambda k: self.data[k].timestamp)
+            except:
+                QMessageBox.warning(self, 'Warning',
+                'Problem parsing measurement dates and times.\n'
+                'Chronological order will NOT be used.')     
 
+                names_chrono = self.data.keys()
+            
             prev_items = [self.dataset_list.item(x).text() 
                     for x in range(self.dataset_list.count())]
             # new items will always be added at the end

@@ -10,9 +10,21 @@ class BlackBodyFromh5():
 
         self.name = name
         t1 = str(np.array(group['end_time'])[()])
-        self.time = datetime.datetime.strptime(t1, 
+
+        try:
+            self.time = datetime.datetime.strptime(t1, 
                         "b'%Y-%m-%dT%H:%M:%S.%f%z'")
-        self.timestamp = self.time.timestamp()
+            self.timestamp = self.time.timestamp()
+
+        except:
+            # fix for <python3.7, colon not supported in timezone (%z)
+            if t1[-4] == ':':
+                t1 = t1[:-4] + t1[-3:] # remove ":"
+                self.time = datetime.datetime.strptime(t1, 
+                            "b'%Y-%m-%dT%H:%M:%S.%f%z'")
+                self.timestamp = self.time.timestamp()
+            else:
+                pass
 
         self.lam = np.array(group['measurement/spectrum_lambdas'])
         self.planck = np.array(group['measurement/planck_data'])
