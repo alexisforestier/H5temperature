@@ -63,3 +63,6 @@ Currently, exporting data is not supported.
 * Unique set of parameters for each temperature data.
 * Capability to save and load sessions.
 * Recursively locate temperature data from any HDF5 file in the arborescence?
+* Ability to load txt files from other sources than ESRF h5 data.
+* Ability to export data as txt for further analysis/plot...
+* Ability to use a constant background in Planck fit?
