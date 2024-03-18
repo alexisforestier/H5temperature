@@ -65,4 +65,4 @@ Currently, exporting data is not supported.
 * Recursively locate temperature data from any HDF5 file in the arborescence?
 * Ability to load txt files from other sources than ESRF h5 data.
 * Ability to export data as txt for further analysis/plot...
-* Ability to use a constant background in Planck fit?
+* Ability to add a constant background in Planck fits?
