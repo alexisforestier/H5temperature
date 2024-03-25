@@ -114,7 +114,8 @@ class MainWindow(QWidget):
         # parameters and their default values
         self.pars = dict(lowerb = 550,
                          upperb = 900,
-                         delta = 100)
+                         delta = 100,
+                         usebg = False)
 
         # left layout   
         load_button = QPushButton('Load h5')
@@ -152,6 +153,7 @@ class MainWindow(QWidget):
         lowerbound_spinbox = QSpinBox()
         upperbound_spinbox = QSpinBox()
         self.delta_spinbox = QSpinBox()
+        usebg_checkbox = QCheckBox('Use background')
 
         lowerbound_spinbox.setMinimum(1)
         upperbound_spinbox.setMinimum(1)
@@ -164,6 +166,7 @@ class MainWindow(QWidget):
         lowerbound_spinbox.setValue(self.pars.get('lowerb'))
         upperbound_spinbox.setValue(self.pars.get('upperb'))
         self.delta_spinbox.setValue(self.pars.get('delta'))
+        usebg_checkbox.setChecked(self.pars.get('usebg'))
 
         choosedelta_button = QPushButton('Choose delta')
         fit_button = QPushButton('Fit')
@@ -175,6 +178,7 @@ class MainWindow(QWidget):
         
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
+        fit_layout.addWidget(usebg_checkbox)
         fit_layout.addWidget(choosedelta_button)
         fit_layout.addWidget(fit_button)
         fit_layout.addStretch()
@@ -226,6 +230,9 @@ class MainWindow(QWidget):
                 lambda x: self.pars.__setitem__('upperb', x))
         self.delta_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('delta', x))
+        usebg_checkbox.stateChanged.connect(
+                lambda: self.pars.__setitem__('usebg', 
+                    usebg_checkbox.isChecked()))
 
         self.dataset_list.currentTextChanged.connect(self.update)
 
@@ -391,14 +398,16 @@ class MainWindow(QWidget):
             current = self.data[nam]
             interval = self.pars['lowerb'], self.pars['upperb']
             delta = self.pars['delta']
+            usebg = self.pars['usebg']
 
             self.clear_plots()
             self.plot_data(nam)
 
             # if parameters have changed then we fit again
-            if not np.logical_and(interval == current.interval,
-                                  delta == current.delta):
-                current.set_interval_and_delta(interval, delta)
+            if not [interval, delta, usebg] == \
+                [current.interval, current.delta, current.usebg]:
+
+                current.set_pars(interval, delta, usebg)
                 self.eval_fits(nam)
 
             self.plot_fits(nam)
