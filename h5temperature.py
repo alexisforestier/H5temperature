@@ -385,9 +385,9 @@ class MainWindow(QWidget):
         # eval all quantities for a given spectrum
         current = self.data[nam]
         try:
-            current.eval_twocolor()
-            current.eval_wien_fit()
             current.eval_planck_fit()
+            current.eval_wien_fit()
+            current.eval_twocolor()
 
         except Exception:
             traceback.print_exc()
@@ -407,6 +407,8 @@ class MainWindow(QWidget):
             if not [interval, delta, usebg] == \
                 [current.interval, current.delta, current.usebg]:
 
+
+                print('yes')
                 current.set_pars(interval, delta, usebg)
                 self.eval_fits(nam)
 

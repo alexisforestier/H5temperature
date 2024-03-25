@@ -122,7 +122,7 @@ class BlackBodyFromh5():
             self.bg = 0
         # correct wien if background is used... 
         # Retrieve wien if background not used anymore...
-        self.wien = h5temperaturePhysics.wien(self.lam, self.planck - self.bg)
+        self.wien = h5temperaturePhysics.wien(self.lam, self.planck, self.bg)
 
 
 
