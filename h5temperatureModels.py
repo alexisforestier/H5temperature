@@ -3,7 +3,7 @@ import h5py
 import datetime
 from scipy.optimize import curve_fit
 
-import h5temperaturePhysics
+import h5temperaturePhysics as Ph
 
 class BlackBodyFromh5():
     def __init__(self, group, name):
@@ -28,14 +28,16 @@ class BlackBodyFromh5():
 
         self.lam = np.array(group['measurement/spectrum_lambdas'])
         self.planck = np.array(group['measurement/planck_data'])
+        self.wien = Ph.wien(self.lam, self.planck)
 
-        self.wien = h5temperaturePhysics.wien(self.lam, self.planck)
+        self.pars = dict(lowerb = None,
+                         upperb = None,
+                         delta  = None,
+                         usebg  = None)
+
+
+        self._ininterval = None
         self.bg = 0
-
-        self.interval = None
-        self.delta = None
-        self.usebg = None
-        self._within = None
 
         self.twocolor = None
         self.T_std_twocolor = None
@@ -43,46 +45,42 @@ class BlackBodyFromh5():
         self.wien_fit = None
         self.wien_residuals = None
         self.T_wien = None
+        self.eps_wien = None
 
         self.planck_fit = None
         self.planck_residuals = None
         self.T_planck = None
+        self.eps_planck = None
 
 
-    def set_pars(self, interval, delta, usebg):
-        # interval as a tuple (min, max)
-        self.interval = interval 
-        self.delta = delta
-        self.usebg = usebg
-        self._within = np.logical_and(self.lam >= self.interval[0], 
-                                      self.lam <= self.interval[1])
-
-
-    def lam_infit(self):
-        return self.lam[self._within]
-
+    def set_pars(self, pars):
+        self.pars = pars
+        self._ininterval = np.logical_and(self.lam >= self.pars['lowerb'], 
+                                          self.lam <= self.pars['upperb'])
 
     def eval_twocolor(self):
         # calculate 2color 
-        self.twocolor = h5temperaturePhysics.temp2color(
-                        self.lam_infit(), 
-                        self.wien[self._within], 
-                        self.delta)
+        self.twocolor = Ph.temp2color(
+                        self.lam[self._ininterval], 
+                        self.wien[self._ininterval], 
+                        self.pars['delta'])
 
         self.T_twocolor = np.mean(self.twocolor)
         self.T_std_twocolor = np.std(self.twocolor)
 
-
     def eval_wien_fit(self):
 
-        a, b = np.polyfit(1 / self.lam_infit(), 
-                          self.wien[self._within], 
+        a, b = np.polyfit(1/self.lam[self._ininterval], 
+                          self.wien[self._ininterval], 
                           1) # order = 1, linear
         
-        self.wien_fit = a / self.lam_infit() + b
-        self.wien_residuals = self.wien[self._within] - self.wien_fit
+        self.wien_fit = a / self.lam[self._ininterval] + b
+        self.wien_residuals = self.wien[self._ininterval] - self.wien_fit
 
         self.T_wien = 1e9 * 1/a # in K
+        self.eps_wien = np.exp(- 1e9 * Ph.h * Ph.c * b / Ph.k)
+
+        print(self.pars)
 
     def eval_planck_fit(self):
         if self.T_wien:
@@ -91,38 +89,35 @@ class BlackBodyFromh5():
             Tguess = 2000
 
         # initial values:
-        if self.usebg:
-                       # eps,   temp,      bg
-            p0      =  (1e-6, Tguess,       0)
-            pbounds = ((   0,      0, -np.inf),
-                       (   1,    1e5, +np.inf))
-        else:
-                       # eps,   temp
-            p0      =  (1e-6, Tguess)
-            pbounds = ((   0,      0),
-                       (   1,    1e5))
+#        if self.pars['usebg']:
+#                       # eps,   temp,      bg
+#            p0      =  (1e-6, Tguess,       0)
+#            pbounds = ((   0,      0, -np.inf),
+#                       (   1,    1e5, +np.inf))
+#        else:
+                   # eps,   temp
+        p0      =  (1e-6, Tguess)
+        pbounds = ((   0,      0),
+                   (   1,    1e5))
 
-        print(p0)
-
-        p_planck, cov_planck = curve_fit(h5temperaturePhysics.planck, 
-                                         self.lam_infit(), 
-                                         self.planck[self._within],                         
+        p_planck, cov_planck = curve_fit(Ph.planck, 
+                                         self.lam[self._ininterval], 
+                                         self.planck[self._ininterval],                         
                                          p0 = p0,
                                          bounds = pbounds)    
 
-      #  print(p_planck)
-        self.planck_fit = h5temperaturePhysics.planck(self.lam_infit(), 
-                                                        *p_planck)
-        self.planck_residuals = self.planck[self._within] - self.planck_fit
+        self.planck_fit = Ph.planck(self.lam[self._ininterval], *p_planck)
+        self.planck_residuals = self.planck[self._ininterval] - self.planck_fit
         self.T_planck = p_planck[1]
+        self.eps_planck = p_planck[0]
 
-        if self.usebg:
-            self.bg = p_planck[-1]
-        else:
-            self.bg = 0
-        # correct wien if background is used... 
-        # Retrieve wien if background not used anymore...
-        self.wien = h5temperaturePhysics.wien(self.lam, self.planck, self.bg)
+#        if self.pars['usebg']:
+#            self.bg = p_planck[-1]
+#        else:
+#            self.bg = 0
+#        # correct wien if background is used... 
+#        # Retrieve wien if background not used anymore...
+#        self.wien = Ph.wien(self.lam, self.planck, self.bg)
 
 
 

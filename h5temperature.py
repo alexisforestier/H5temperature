@@ -1,8 +1,9 @@
+#*************************** h5temperature program ****************************
 #
-#*********************** h5temperature program ***********************
+#   Author   :    Alexis Forestier
+#   Year     :    2024
+#   E-mail   :    alforestier@gmail.com
 #
-#   Copyright (C) 2024 Alexis Forestier
-#   E-mail : alforestier@gmail.com
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -17,6 +18,8 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+#
+#******************************************************************************
 
 import sys
 import numpy as np
@@ -306,7 +309,7 @@ class MainWindow(QWidget):
         #self.choosedelta_win.canvas.ax.collections.clear()
 
         alldeltas = np.array(range(300))
-        allstddevs = np.array( [temp2color(current.lam_infit(), 
+        allstddevs = np.array( [temp2color(current.lam[current._ininterval], 
                                 current.wien[current._within], di).std() 
                                 for di in alldeltas ] )
 
@@ -318,7 +321,7 @@ class MainWindow(QWidget):
                                                alpha=0.5,
                                                s=30)
 
-        self.choosedelta_win.canvas.ax.set_ylim([0,2e3])
+        self.choosedelta_win.canvas.ax.set_ylim([0,2.5e3])
 
         self.choosedelta_win.canvas.draw()
         self.choosedelta_win.show()
@@ -384,32 +387,27 @@ class MainWindow(QWidget):
     def eval_fits(self, nam):
         # eval all quantities for a given spectrum
         current = self.data[nam]
-        try:
-            current.eval_planck_fit()
-            current.eval_wien_fit()
-            current.eval_twocolor()
+#        try:
+        current.eval_wien_fit()
+        current.eval_twocolor()
+        current.eval_planck_fit()
 
-        except Exception:
-            traceback.print_exc()
+
+#        except Exception:
+#            traceback.print_exc()
 
     def update(self, nam):
         # I nam otherwise crash at clear_all()
         if nam:
             current = self.data[nam]
-            interval = self.pars['lowerb'], self.pars['upperb']
-            delta = self.pars['delta']
-            usebg = self.pars['usebg']
 
             self.clear_plots()
             self.plot_data(nam)
 
             # if parameters have changed then we fit again
-            if not [interval, delta, usebg] == \
-                [current.interval, current.delta, current.usebg]:
-
-
-                print('yes')
-                current.set_pars(interval, delta, usebg)
+            if not current.pars == self.pars:
+                print('changed!')
+                current.set_pars(self.pars)
                 self.eval_fits(nam)
 
             self.plot_fits(nam)
@@ -441,7 +439,7 @@ class MainWindow(QWidget):
         current = self.data[nam]
 
         self.canvas.axes[1,0].scatter(
-            current.lam_infit()[:-self.pars['delta']], 
+            current.lam[current._ininterval][:-current.pars['delta']], 
             current.twocolor, 
             edgecolor='k',
             facecolor='royalblue',
@@ -456,20 +454,20 @@ class MainWindow(QWidget):
                                    label='two-color histogram')
 
         # plot fits:
-        self.canvas.axes[0,0].plot(current.lam_infit(),
+        self.canvas.axes[0,0].plot(current.lam[current._ininterval],
                                    current.planck_fit,
                                    color='r',
                                    linewidth=2,
                                    label='Planck fit')
 
-        self.canvas.ax_planck_res.scatter(current.lam_infit(), 
+        self.canvas.ax_planck_res.scatter(current.lam[current._ininterval], 
                                           current.planck_residuals, 
                                           color='gray',
                                           alpha=0.1,
                                           s=15, 
                                           label='residuals')
 
-        self.canvas.axes[0,1].plot(1 / current.lam_infit(), 
+        self.canvas.axes[0,1].plot(1 / current.lam[current._ininterval], 
                                    current.wien_fit, 
                                    c='r', 
                                    linewidth=2, 
@@ -480,7 +478,7 @@ class MainWindow(QWidget):
                                       linestyle='dashed',
                                       label='mean')            
         
-        self.canvas.ax_wien_res.scatter(1 / current.lam_infit(), 
+        self.canvas.ax_wien_res.scatter(1 / current.lam[current._ininterval], 
                                         current.wien_residuals, 
                                         color='gray',
                                         alpha=0.1,
@@ -526,8 +524,8 @@ class MainWindow(QWidget):
 
         # Custom Autoscales...
         # planck:
-        self.canvas.axes[0,0].set_xlim([current.interval[0] - 100, 
-                                        current.interval[1] + 100]) 
+        self.canvas.axes[0,0].set_xlim([current.pars['lowerb'] - 100, 
+                                        current.pars['upperb'] + 100]) 
 
         self.canvas.axes[0,0].set_ylim([np.min( current.planck_fit - \
                                             0.5*np.ptp(current.planck_fit)),
@@ -540,8 +538,8 @@ class MainWindow(QWidget):
 
         # wien:
         self.canvas.axes[0,1].set_xlim(
-            [np.min( 1 / current.lam_infit() - 0.0002 ),
-             np.max( 1 / current.lam_infit() + 0.0002 )])
+            [np.min( 1 / current.lam[current._ininterval] - 0.0002 ),
+             np.max( 1 / current.lam[current._ininterval] + 0.0002 )])
 
         self.canvas.axes[0,1].set_ylim([np.min( current.wien_fit - \
                                             0.5*np.ptp(current.wien_fit)),
@@ -552,8 +550,8 @@ class MainWindow(QWidget):
             np.max( current.wien_fit )])
 
         # 2color:
-        self.canvas.axes[1,0].set_xlim([current.interval[0],
-                                        current.interval[1] + 20])
+        self.canvas.axes[1,0].set_xlim([current.pars['lowerb'],
+                                        current.pars['upperb'] + 20])
         self.canvas.axes[1,0].set_ylim(
             [current.T_twocolor - 5 * current.T_std_twocolor, 
              current.T_twocolor + 5 * current.T_std_twocolor])

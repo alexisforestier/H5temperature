@@ -13,7 +13,11 @@ def planck(lamb, eps, temp, bg = 0):
 
 def wien(lamb, I, bg = 0):
     lamb = lamb * 1e-9 # now in meters
-    f = (k / (h*c)) * np.log(2 * np.pi * h * c**2 / ((I - bg) * lamb**5) )
+
+    I2 = (I-bg)
+    I2[I2<0] = 1e-5
+
+    f = (k / (h*c)) * np.log(2 * np.pi * h * c**2 / (I2 * lamb**5) )
     return f
 
 def temp2color(lamb, wien, deltapx):    
