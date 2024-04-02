@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 import datetime
 from scipy.optimize import curve_fit
+from copy import deepcopy
 
 import h5temperaturePhysics as Ph
 
@@ -54,7 +55,8 @@ class BlackBodyFromh5():
 
 
     def set_pars(self, pars):
-        self.pars = pars
+        # deepcopy necessary otherwise always point to the mainwindow pars!
+        self.pars = deepcopy(pars)
         self._ininterval = np.logical_and(self.lam >= self.pars['lowerb'], 
                                           self.lam <= self.pars['upperb'])
 
@@ -77,10 +79,9 @@ class BlackBodyFromh5():
         self.wien_fit = a / self.lam[self._ininterval] + b
         self.wien_residuals = self.wien[self._ininterval] - self.wien_fit
 
-        self.T_wien = 1e9 * 1/a # in K
-        self.eps_wien = np.exp(- 1e9 * Ph.h * Ph.c * b / Ph.k)
-
-        print(self.pars)
+        self.T_wien = 1e9 * 1/a # in K ; as wien fonction use lam in m
+        # no factor required for b:
+        self.eps_wien = np.exp(- b * Ph.h * Ph.c / Ph.k)
 
     def eval_planck_fit(self):
         if self.T_wien:
@@ -89,16 +90,16 @@ class BlackBodyFromh5():
             Tguess = 2000
 
         # initial values:
-#        if self.pars['usebg']:
-#                       # eps,   temp,      bg
-#            p0      =  (1e-6, Tguess,       0)
-#            pbounds = ((   0,      0, -np.inf),
-#                       (   1,    1e5, +np.inf))
-#        else:
-                   # eps,   temp
-        p0      =  (1e-6, Tguess)
-        pbounds = ((   0,      0),
-                   (   1,    1e5))
+        if self.pars['usebg']:
+                       # eps,   temp,      bg
+            p0      =  (1e-6, Tguess,       0)
+            pbounds = ((   0,      0, -np.inf),
+                       (   1,    1e5, +np.inf))
+        else:
+                       # eps,   temp
+            p0      =  (1e-6, Tguess)
+            pbounds = ((   0,      0),
+                       (   1,    1e5))
 
         p_planck, cov_planck = curve_fit(Ph.planck, 
                                          self.lam[self._ininterval], 
@@ -111,16 +112,16 @@ class BlackBodyFromh5():
         self.T_planck = p_planck[1]
         self.eps_planck = p_planck[0]
 
-#        if self.pars['usebg']:
-#            self.bg = p_planck[-1]
-#        else:
-#            self.bg = 0
-#        # correct wien if background is used... 
-#        # Retrieve wien if background not used anymore...
-#        self.wien = Ph.wien(self.lam, self.planck, self.bg)
+        if self.pars['usebg']:
+            self.bg = p_planck[-1]
+        else:
+            self.bg = 0
+        # correct wien if background is used... 
+        # Retrieve wien if background not used anymore...
+        self.wien = Ph.wien(self.lam, self.planck, self.bg)
 
-
-
+        print(len(self.wien))
+        
 if __name__ == '__main__':
 
     i = 0 

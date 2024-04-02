@@ -23,7 +23,7 @@
 
 import sys
 import numpy as np
-import traceback
+#import traceback
 import h5py
 from scipy.optimize import curve_fit
 import matplotlib
@@ -108,7 +108,7 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.resize(1500,900)
+        self.resize(1400,800)
 
         # data stored in self
         self.filepath = str()
@@ -310,7 +310,7 @@ class MainWindow(QWidget):
 
         alldeltas = np.array(range(300))
         allstddevs = np.array( [temp2color(current.lam[current._ininterval], 
-                                current.wien[current._within], di).std() 
+                                current.wien[current._ininterval], di).std() 
                                 for di in alldeltas ] )
 
         self.choosedelta_win.canvas.ax.scatter(alldeltas, 
@@ -387,17 +387,16 @@ class MainWindow(QWidget):
     def eval_fits(self, nam):
         # eval all quantities for a given spectrum
         current = self.data[nam]
-#        try:
-        current.eval_wien_fit()
-        current.eval_twocolor()
-        current.eval_planck_fit()
+        try:
+            current.eval_wien_fit()
+            current.eval_twocolor()
+            current.eval_planck_fit()
 
-
-#        except Exception:
-#            traceback.print_exc()
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', str(e))
 
     def update(self, nam):
-        # I nam otherwise crash at clear_all()
+        # If nam otherwise crash
         if nam:
             current = self.data[nam]
 
@@ -406,7 +405,6 @@ class MainWindow(QWidget):
 
             # if parameters have changed then we fit again
             if not current.pars == self.pars:
-                print('changed!')
                 current.set_pars(self.pars)
                 self.eval_fits(nam)
 
