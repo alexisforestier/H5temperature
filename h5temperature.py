@@ -388,9 +388,9 @@ class MainWindow(QWidget):
         # eval all quantities for a given spectrum
         current = self.data[nam]
         try:
+            current.eval_planck_fit()
             current.eval_wien_fit()
             current.eval_twocolor()
-            current.eval_planck_fit()
 
         except Exception as e:
             QMessageBox.critical(self, 'Error', str(e))

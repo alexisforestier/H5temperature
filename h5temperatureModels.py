@@ -29,7 +29,9 @@ class BlackBodyFromh5():
 
         self.lam = np.array(group['measurement/spectrum_lambdas'])
         self.planck = np.array(group['measurement/planck_data'])
-        self.wien = Ph.wien(self.lam, self.planck)
+        self.rawwien = Ph.wien(self.lam, self.planck)
+        # wien initialized as rawwien:
+        self.wien = self.rawwien
 
         self.pars = dict(lowerb = None,
                          upperb = None,
@@ -114,10 +116,12 @@ class BlackBodyFromh5():
 
         if self.pars['usebg']:
             self.bg = p_planck[-1]
+            self.wien = Ph.wien(self.lam, self.planck, self.bg)
+
         else:
             # if desactivated, bg is set back to 0
             self.bg = 0
-
+            self.wien = self.rawwien
 
 if __name__ == '__main__':
 
