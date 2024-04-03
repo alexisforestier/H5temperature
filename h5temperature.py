@@ -401,13 +401,15 @@ class MainWindow(QWidget):
             current = self.data[nam]
 
             self.clear_plots()
-            self.plot_data(nam)
 
             # if parameters have changed then we fit again
             if not current.pars == self.pars:
                 current.set_pars(self.pars)
                 self.eval_fits(nam)
-
+            
+            # all must be plotted AFTER fit 
+            # since wien can be reevaluated with bg!
+            self.plot_data(nam)
             self.plot_fits(nam)
 
     def plot_data(self, nam):
@@ -461,7 +463,7 @@ class MainWindow(QWidget):
         self.canvas.ax_planck_res.scatter(current.lam[current._ininterval], 
                                           current.planck_residuals, 
                                           color='gray',
-                                          alpha=0.1,
+                                          alpha=0.2,
                                           s=15, 
                                           label='residuals')
 
@@ -479,7 +481,7 @@ class MainWindow(QWidget):
         self.canvas.ax_wien_res.scatter(1 / current.lam[current._ininterval], 
                                         current.wien_residuals, 
                                         color='gray',
-                                        alpha=0.1,
+                                        alpha=0.2,
                                         s=15, 
                                         label='residuals')
 
