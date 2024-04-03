@@ -115,13 +115,10 @@ class BlackBodyFromh5():
         if self.pars['usebg']:
             self.bg = p_planck[-1]
         else:
+            # if desactivated, bg is set back to 0
             self.bg = 0
-        # correct wien if background is used... 
-        # Retrieve wien if background not used anymore...
-        self.wien = Ph.wien(self.lam, self.planck, self.bg)
 
-        print(len(self.wien))
-        
+
 if __name__ == '__main__':
 
     i = 0 
