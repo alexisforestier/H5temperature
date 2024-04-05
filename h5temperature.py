@@ -388,6 +388,8 @@ class MainWindow(QWidget):
         # eval all quantities for a given spectrum
         current = self.data[nam]
         try:
+            # may be cool to run a wien fit without any BG first to get 
+            # an initial Tguess... but may be overkilled. 
             current.eval_planck_fit()
             current.eval_wien_fit()
             current.eval_twocolor()
@@ -546,8 +548,8 @@ class MainWindow(QWidget):
                                         np.max( current.wien_fit + \
                                             0.5*np.ptp(current.wien_fit))])
         self.canvas.ax_wien_res.set_ylim([
-            np.min( current.wien_fit ),
-            np.max( current.wien_fit )])
+            np.min( current.wien_residuals ),
+            np.max( current.wien_residuals )])
 
         # 2color:
         self.canvas.axes[1,0].set_xlim([current.pars['lowerb'],

@@ -91,6 +91,7 @@ class BlackBodyFromh5():
         else:
             Tguess = 2000
 
+        Tguess=2000
         # initial values:
         if self.pars['usebg']:
                        # eps,   temp,      bg
@@ -102,6 +103,8 @@ class BlackBodyFromh5():
             p0      =  (1e-6, Tguess)
             pbounds = ((   0,      0),
                        (   1,    1e5))
+
+        print(p0)
 
         p_planck, cov_planck = curve_fit(Ph.planck, 
                                          self.lam[self._ininterval], 
