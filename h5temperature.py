@@ -422,16 +422,18 @@ class MainWindow(QWidget):
                                       current.planck, 
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.3,
+                                      alpha=.9,
                                       s=15, 
+                                      zorder=5,
                                       label='Planck data')
 
         self.canvas.axes[0,1].scatter(1 / current.lam, 
                                       current.wien, 
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.3,
+                                      alpha=.9,
                                       s=15, 
+                                      zorder=5,
                                       label='Wien data')
 
        # self.update_legends()
@@ -445,14 +447,16 @@ class MainWindow(QWidget):
             current.twocolor, 
             edgecolor='k',
             facecolor='royalblue',
-            alpha=.3,
+            alpha=.9,
             s=15, 
+            zorder=5,
             label='two-color data')
 
         h_y, h_x, _ = self.canvas.axes[1,1].hist(current.twocolor, 
                                    color='royalblue',
                                    bins = 50,
-                                   alpha=.6, 
+                                   alpha=.9, 
+                                   zorder=5,
                                    label='two-color histogram')
 
         # plot fits:
@@ -460,31 +464,40 @@ class MainWindow(QWidget):
                                    current.planck_fit,
                                    color='r',
                                    linewidth=2,
+                                   zorder=7,
                                    label='Planck fit')
 
         self.canvas.ax_planck_res.scatter(current.lam[current._ininterval], 
                                           current.planck_residuals, 
-                                          color='gray',
-                                          alpha=0.2,
+                                          edgecolor='gray',
+                                          facecolor='none',
+                                          linewidth=1.5,
+                                          alpha=0.3,
                                           s=15, 
+                                          zorder=0,
                                           label='residuals')
 
         self.canvas.axes[0,1].plot(1 / current.lam[current._ininterval], 
                                    current.wien_fit, 
                                    c='r', 
                                    linewidth=2, 
+                                   zorder=7,
                                    label='Wien fit')
 
         self.canvas.axes[1,0].axhline(np.mean(current.twocolor), 
                                       color='r',
                                       linestyle='dashed',
+                                      zorder=7,
                                       label='mean')            
         
         self.canvas.ax_wien_res.scatter(1 / current.lam[current._ininterval], 
                                         current.wien_residuals, 
-                                        color='gray',
-                                        alpha=0.2,
+                                        edgecolor='gray',
+                                        facecolor='none',
+                                        linewidth=1.5,
+                                        alpha=0.3,
                                         s=15, 
+                                        zorder=0,
                                         label='residuals')
 
         # texts on plots:
@@ -494,7 +507,7 @@ class MainWindow(QWidget):
                             ' K', 
                             size=17, 
                             color='r', 
-                            zorder=3,
+                            zorder=10,
                             transform=self.canvas.axes[0,0].transAxes)
 
         self.canvas.axes[0,1].text(0.1, 0.7, 
@@ -503,7 +516,7 @@ class MainWindow(QWidget):
                             ' K', 
                             size=17, 
                             color='r', 
-                            zorder=3,
+                            zorder=10,
                             transform=self.canvas.axes[0,1].transAxes)
         
         self.canvas.axes[1,0].text(0.3, 0.7, 
@@ -512,7 +525,7 @@ class MainWindow(QWidget):
                             ' K', 
                             size=17, 
                             color='r', 
-                            zorder=3,
+                            zorder=10,
                             transform=self.canvas.axes[1,0].transAxes)
 
         self.canvas.axes[1,1].text(0.1, 0.8, 
@@ -521,8 +534,8 @@ class MainWindow(QWidget):
                             ' K', 
                             size=17, 
                             color='r', 
-                            zorder=3,
-                                transform=self.canvas.axes[1,1].transAxes)
+                            zorder=10,
+                            transform=self.canvas.axes[1,1].transAxes)
 
         # Custom Autoscales...
         # planck:
@@ -564,8 +577,14 @@ class MainWindow(QWidget):
              current.T_twocolor + 5 * current.T_std_twocolor])
         self.canvas.axes[1,1].set_ylim([0, np.max(h_y) + 10])
 
-
         self.update_legends()
+
+        # required to have residuals BEHIND data points :
+        self.canvas.axes[0,0].set_zorder(2)
+        self.canvas.axes[0,0].set_frame_on(False)
+        self.canvas.axes[0,1].set_zorder(2)
+        self.canvas.axes[0,1].set_frame_on(False)
+
         self.canvas.draw()
 
 
