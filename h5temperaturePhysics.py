@@ -16,7 +16,7 @@ def wien(lamb, I, bg = 0):
 
     I2 = (I-bg)
     # SHOULD BE IMPROVED?
-    I2[I2<0] = 1e-5
+    I2[I2<0] = 1e-8
 
     f = (k / (h*c)) * np.log(2 * np.pi * h * c**2 / (I2 * lamb**5) )
     return f

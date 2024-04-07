@@ -306,6 +306,7 @@ class MainWindow(QWidget):
         current = self.data[nam]
 
         _ = [c.remove() for c in self.choosedelta_win.canvas.ax.collections]
+        _ = [l.remove() for l in self.choosedelta_win.canvas.ax.lines]
         #self.choosedelta_win.canvas.ax.collections.clear()
 
         alldeltas = np.array(range(300))
@@ -321,6 +322,11 @@ class MainWindow(QWidget):
                                                alpha=0.5,
                                                s=30)
 
+        vline = self.choosedelta_win.canvas.ax.axvline(current.pars['delta'],
+                                               color='k',
+                                               linestyle='dashed',
+                                               linewidth=1)
+
         self.choosedelta_win.canvas.ax.set_ylim([0,2.5e3])
 
         self.choosedelta_win.canvas.draw()
@@ -329,8 +335,11 @@ class MainWindow(QWidget):
         def get_xclick(event):
             x = int(event.xdata)
             self.delta_spinbox.setValue(x)
+            vline.set_xdata(x)
+            self.choosedelta_win.canvas.draw()
+            
             self.update(nam)
-
+            
         # click event
         self.choosedelta_win.canvas.mpl_connect('button_press_event', 
                             get_xclick)
