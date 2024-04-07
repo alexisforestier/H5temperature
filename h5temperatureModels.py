@@ -86,10 +86,13 @@ class BlackBodyFromh5():
         self.eps_wien = np.exp(- b * Ph.h * Ph.c / Ph.k)
 
     def eval_planck_fit(self):
-        if self.T_wien:
-            Tguess = self.T_wien
-        else:
-            Tguess = 2000
+        # lead to some problem with oscillating Tguess 
+        # hence oscillating solution:
+        #
+        #if self.T_wien:
+        #    Tguess = self.T_wien
+        #else:
+        #    Tguess = 2000
 
         Tguess=2000
         # initial values:
@@ -104,8 +107,7 @@ class BlackBodyFromh5():
             pbounds = ((   0,      0),
                        (   1,    1e5))
 
-        print(p0)
-
+        #print(p0)
         p_planck, cov_planck = curve_fit(Ph.planck, 
                                          self.lam[self._ininterval], 
                                          self.planck[self._ininterval],                         

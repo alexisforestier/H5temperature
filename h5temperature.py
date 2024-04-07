@@ -422,7 +422,7 @@ class MainWindow(QWidget):
                                       current.planck, 
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.9,
+                                      alpha=.5,
                                       s=15, 
                                       zorder=5,
                                       label='Planck data')
@@ -431,10 +431,21 @@ class MainWindow(QWidget):
                                       current.wien, 
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.9,
+                                      alpha=.5,
                                       s=15, 
                                       zorder=5,
                                       label='Wien data')
+
+        if current.pars['usebg']:
+            self.canvas.axes[0,1].scatter(1 / current.lam, 
+                                      current.rawwien, 
+                                      edgecolor='k',
+                                      facecolor='lightcoral',
+                                      alpha=.3,
+                                      s=20,
+                                      marker='^', 
+                                      zorder=3,
+                                      label='Wien data (no bg)')
 
        # self.update_legends()
 
@@ -447,15 +458,15 @@ class MainWindow(QWidget):
             current.twocolor, 
             edgecolor='k',
             facecolor='royalblue',
-            alpha=.9,
+            alpha=.5,
             s=15, 
             zorder=5,
             label='two-color data')
 
         h_y, h_x, _ = self.canvas.axes[1,1].hist(current.twocolor, 
-                                   color='royalblue',
+                                   color='darkblue',
                                    bins = 50,
-                                   alpha=.9, 
+                                   alpha=.7, 
                                    zorder=5,
                                    label='two-color histogram')
 
@@ -466,6 +477,15 @@ class MainWindow(QWidget):
                                    linewidth=2,
                                    zorder=7,
                                    label='Planck fit')
+
+        if current.pars['usebg']:
+            self.canvas.axes[0,0].axhline(current.bg,
+                                          color='k',
+                                          linewidth=1.5,
+                                          linestyle='dashed',
+                                          zorder=3,
+                                          label='background')            
+
 
         self.canvas.ax_planck_res.scatter(current.lam[current._ininterval], 
                                           current.planck_residuals, 
@@ -501,7 +521,7 @@ class MainWindow(QWidget):
                                         label='residuals')
 
         # texts on plots:
-        self.canvas.axes[0,0].text(0.1, 0.7, 
+        self.canvas.axes[0,0].text(0.05, 0.65, 
                             'T$_\\mathrm{Planck}$= ' + 
                             str( round(current.T_planck) ) + 
                             ' K', 
@@ -510,7 +530,7 @@ class MainWindow(QWidget):
                             zorder=10,
                             transform=self.canvas.axes[0,0].transAxes)
 
-        self.canvas.axes[0,1].text(0.1, 0.7, 
+        self.canvas.axes[0,1].text(0.05, 0.65, 
                             'T$_\\mathrm{Wien}$= ' + 
                             str( round(current.T_wien) ) + 
                             ' K', 
@@ -519,7 +539,7 @@ class MainWindow(QWidget):
                             zorder=10,
                             transform=self.canvas.axes[0,1].transAxes)
         
-        self.canvas.axes[1,0].text(0.3, 0.7, 
+        self.canvas.axes[1,0].text(0.05, 0.7, 
                             'T$_\\mathrm{two-color}$= ' + 
                             str( round( current.T_twocolor ) ) + 
                             ' K', 
@@ -528,7 +548,7 @@ class MainWindow(QWidget):
                             zorder=10,
                             transform=self.canvas.axes[1,0].transAxes)
 
-        self.canvas.axes[1,1].text(0.1, 0.8, 
+        self.canvas.axes[1,1].text(0.05, 0.8, 
                             'std dev. = ' + 
                             str( round( current.T_std_twocolor ) ) + 
                             ' K', 
@@ -575,7 +595,7 @@ class MainWindow(QWidget):
         self.canvas.axes[1,1].set_xlim(
             [current.T_twocolor - 5 * current.T_std_twocolor,
              current.T_twocolor + 5 * current.T_std_twocolor])
-        self.canvas.axes[1,1].set_ylim([0, np.max(h_y) + 10])
+        self.canvas.axes[1,1].set_ylim([0, np.max(h_y) + .4*np.max(h_y)])
 
         self.update_legends()
 
