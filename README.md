@@ -22,7 +22,8 @@ Python3 packages:
 
 ### From source 
 
-__Check you have the requirements above installed for your python3 distribution. Then run __
+__Check you have the requirements above installed for your python3 distribution. Then run__
+
 ```
 python3 h5temperature.py
 ```
