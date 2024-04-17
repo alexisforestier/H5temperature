@@ -27,8 +27,20 @@ class BlackBodyFromh5():
             else:
                 pass
 
-        self.lam = np.array(group['measurement/spectrum_lambdas'])
-        self.planck = np.array(group['measurement/planck_data'])
+        lam1 = np.array(group['measurement/spectrum_lambdas'])
+        # reordering...
+        ordind = np.argsort(lam1)
+
+        if lam1.ndim == 1:  # normal case
+            self.lam = lam1[ordind]
+            self.planck = np.array(group['measurement/planck_data'])[ordind]
+
+        # Rare case of a mesh of T measurements -> Unsupported.
+        # no ordering to avoid errors due to indexing with ordind. 
+        else: 
+            self.lam = lam1
+            self.planck = np.array(group['measurement/planck_data'])
+
         self.rawwien = Ph.wien(self.lam, self.planck)
         # wien initialized as rawwien:
         self.wien = self.rawwien
@@ -130,9 +142,27 @@ class BlackBodyFromh5():
 
 if __name__ == '__main__':
 
-    i = 0 
     with h5py.File('/home/alex/mnt/Data1/ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/hc5078_CDMX18.h5', 'r') as file:
-        for k, v in file.items():
-            if 'measurement/T_planck' in v:
-                i+=1
-    print(i)
+      #  print(file['CDMX18_rampe01_14.1/measurement'].keys())
+        lam = np.array(file['CDMX18_rampe01_14.1/measurement/spectrum_lambdas'])
+        planck = np.array(file['CDMX18_rampe01_14.1/measurement/planck_data'])
+        
+
+        test = BlackBodyFromh5(file['CDMX18_rampe01_14.1'], 'test1')
+        
+        print( test.lam[40] )
+        print( test.lam[40+50] )
+
+        print( np.argsort(test.lam) )
+
+#        data = np.column_stack((lam, planck))
+#        print(data)
+
+        #import matplotlib.pyplot as plt
+        #plt.plot(data[:,0], data[:,1])
+        #plt.show()
+
+        #np.savetxt('test.csv', data, delimiter = '\t')
+        #x = np.loadtxt('test.csv', delimiter = '\t')
+        #plt.plot(x[:,0], x[:,1])
+        #plt.show()

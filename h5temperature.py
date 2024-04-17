@@ -548,7 +548,7 @@ class MainWindow(QWidget):
                             zorder=10,
                             transform=self.canvas.axes[0,1].transAxes)
         
-        self.canvas.axes[1,0].text(0.05, 0.7, 
+        self.canvas.axes[1,0].text(0.2, 0.7, 
                             'T$_\\mathrm{two-color}$= ' + 
                             str( round( current.T_twocolor ) ) + 
                             ' K', 
@@ -594,8 +594,8 @@ class MainWindow(QWidget):
             np.max( current.wien_residuals )])
 
         # 2color:
-        self.canvas.axes[1,0].set_xlim([current.pars['lowerb'],
-                                        current.pars['upperb'] + 20])
+        self.canvas.axes[1,0].set_xlim([current.pars['lowerb'] - 30,
+                                        current.pars['upperb'] ])
         self.canvas.axes[1,0].set_ylim(
             [current.T_twocolor - 5 * current.T_std_twocolor, 
              current.T_twocolor + 5 * current.T_std_twocolor])
