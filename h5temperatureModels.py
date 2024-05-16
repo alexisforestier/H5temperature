@@ -1,3 +1,26 @@
+#*************************** h5temperature program ****************************
+#
+#   Author   :    Alexis Forestier
+#   Date     :    may 2024
+#   E-mail   :    alforestier@gmail.com
+#
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#
+#******************************************************************************
+
 import numpy as np 
 import h5py
 import datetime
@@ -80,15 +103,17 @@ class BlackBodyFromh5():
                         self.lam[self._ininterval], 
                         self.wien[self._ininterval], 
                         self.pars['delta'])
-
-        self.T_twocolor = np.mean(self.twocolor)
-        self.T_std_twocolor = np.std(self.twocolor)
+        # nan for cases where I-bg < 0
+        self.T_twocolor = np.nanmean(self.twocolor)
+        self.T_std_twocolor = np.nanstd(self.twocolor)
 
     def eval_wien_fit(self):
+        # in cases of I-bg < 0, the wien fct returns np.nan:
+        keepind = np.isfinite(self.wien[self._ininterval])
+        x1 = (1/self.lam[self._ininterval])[keepind]
+        y1 = (self.wien[self._ininterval])[keepind]
 
-        a, b = np.polyfit(1/self.lam[self._ininterval], 
-                          self.wien[self._ininterval], 
-                          1) # order = 1, linear
+        a, b = np.polyfit(x1, y1, 1) # order = 1, linear
         
         self.wien_fit = a / self.lam[self._ininterval] + b
         self.wien_residuals = self.wien[self._ininterval] - self.wien_fit
@@ -110,9 +135,9 @@ class BlackBodyFromh5():
         # initial values:
         if self.pars['usebg']:
                        # eps,   temp,      bg
-            p0      =  (1e-6, Tguess,       0)
-            pbounds = ((   0,      0, -np.inf),
-                       (   1,    1e5, +np.inf))
+            p0      =  (1e-6, Tguess,        0)
+            pbounds = ((   0,      0,  -np.inf),
+                       (   1,    1e5,  +np.inf))
         else:
                        # eps,   temp
             p0      =  (1e-6, Tguess)
@@ -138,6 +163,7 @@ class BlackBodyFromh5():
         else:
             # if desactivated, bg is set back to 0
             self.bg = 0
+            # original wien is recovered
             self.wien = self.rawwien
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 #*************************** h5temperature program ****************************
 #
 #   Author   :    Alexis Forestier
-#   Year     :    2024
+#   Date     :    may 2024
 #   E-mail   :    alforestier@gmail.com
 #
 #
@@ -589,9 +589,10 @@ class MainWindow(QWidget):
                                             0.5*np.ptp(current.wien_fit)),
                                         np.max( current.wien_fit + \
                                             0.5*np.ptp(current.wien_fit))])
+        # nanmin/max for cases where I-bg<0:
         self.canvas.ax_wien_res.set_ylim([
-            np.min( current.wien_residuals ),
-            np.max( current.wien_residuals )])
+            np.nanmin( current.wien_residuals ),
+            np.nanmax( current.wien_residuals )])
 
         # 2color:
         self.canvas.axes[1,0].set_xlim([current.pars['lowerb'] - 30,
