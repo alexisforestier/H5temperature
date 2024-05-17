@@ -310,9 +310,10 @@ class MainWindow(QWidget):
         #self.choosedelta_win.canvas.ax.collections.clear()
 
         alldeltas = np.array(range(300))
-        allstddevs = np.array( [temp2color(current.lam[current._ininterval], 
-                                current.wien[current._ininterval], di).std() 
-                                for di in alldeltas ] )
+        allstddevs = np.array( [np.nanstd(temp2color(
+                                current.lam[current._ininterval], 
+                                current.wien[current._ininterval], 
+                                di)) for di in alldeltas ] )
 
         self.choosedelta_win.canvas.ax.scatter(alldeltas, 
                                                allstddevs,
