@@ -36,6 +36,7 @@ from PyQt5.QtWidgets import (QApplication,
                              QSpinBox,
                              QCheckBox,
 #                            QDoubleSpinBox,
+                             QTableView,
                              QGroupBox,
                              QPushButton,
                              QListWidget,
@@ -179,11 +180,14 @@ class MainWindow(QWidget):
         fitparam_form.addRow('Upper limit (nm):', upperbound_spinbox)
         fitparam_form.addRow('2-color delta (px):', self.delta_spinbox)
         
+        results_table = QTableView()
+
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
         fit_layout.addWidget(usebg_checkbox)
         fit_layout.addWidget(choosedelta_button)
         fit_layout.addWidget(fit_button)
+        fit_layout.addWidget(results_table)
         fit_layout.addStretch()
 
         right_groupbox = QGroupBox('Fitting')
