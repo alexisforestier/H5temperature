@@ -78,6 +78,7 @@ class BlackBodyFromh5():
         self.bg = 0
 
         self.twocolor = None
+        self.T_twocolor = None
         self.T_std_twocolor = None
 
         self.wien_fit = None

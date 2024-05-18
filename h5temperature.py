@@ -36,7 +36,10 @@ from PyQt5.QtWidgets import (QApplication,
                              QSpinBox,
                              QCheckBox,
 #                            QDoubleSpinBox,
-                             QTableView,
+                             QTableWidget,
+                             QTableWidgetItem,
+                             QAbstractItemView,
+                             QHeaderView,
                              QGroupBox,
                              QPushButton,
                              QListWidget,
@@ -45,7 +48,6 @@ from PyQt5.QtWidgets import (QApplication,
                              QHBoxLayout,
                              QFileDialog,
                              QMessageBox)
-
 from h5temperaturePhysics import temp2color
 from h5temperatureModels import BlackBodyFromh5
 
@@ -180,14 +182,28 @@ class MainWindow(QWidget):
         fitparam_form.addRow('Upper limit (nm):', upperbound_spinbox)
         fitparam_form.addRow('2-color delta (px):', self.delta_spinbox)
         
-        results_table = QTableView()
+
+        self.results_table = QTableWidget()
+        self.results_table.setRowCount(7)
+        self.results_table.setColumnCount(1)
+        self.results_table.horizontalHeader().setVisible(False)
+        self.results_table.horizontalHeader().setSectionResizeMode(0, 
+                    QHeaderView.Stretch)
+        self.results_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.results_table.setVerticalHeaderLabels(["T Planck (K)", 
+                                                    "T Wien (K)",
+                                                    "T 2-color (K)",
+                                                    "T 2-c std dev (K)",
+                                                    "epsilon Planck",
+                                                    "epsilon Wien", 
+                                                    "bg"])
 
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
         fit_layout.addWidget(usebg_checkbox)
         fit_layout.addWidget(choosedelta_button)
         fit_layout.addWidget(fit_button)
-        fit_layout.addWidget(results_table)
+        fit_layout.addWidget(self.results_table)
         fit_layout.addStretch()
 
         right_groupbox = QGroupBox('Fitting')
@@ -218,7 +234,7 @@ class MainWindow(QWidget):
         layout.addStretch()
         layout.addWidget(center_groupbox, stretch=12)
         layout.addStretch()
-        layout.addWidget(right_groupbox, stretch=2)
+        layout.addWidget(right_groupbox, stretch=3)
         
         self.setLayout(layout)
 
@@ -427,6 +443,24 @@ class MainWindow(QWidget):
             # since wien can be reevaluated with bg!
             self.plot_data(nam)
             self.plot_fits(nam)
+            self.update_table(nam)
+
+    def update_table(self, nam):
+        current = self.data[nam]
+        self.results_table.setItem(0, 0, 
+                    QTableWidgetItem(str(round(current.T_planck))))
+        self.results_table.setItem(0, 1, 
+                    QTableWidgetItem(str(round(current.T_wien))))
+        self.results_table.setItem(0, 2, 
+                    QTableWidgetItem(str(round(current.T_twocolor))))
+        self.results_table.setItem(0, 3, 
+                    QTableWidgetItem(str(round(current.T_std_twocolor))))
+        self.results_table.setItem(0, 4, 
+                    QTableWidgetItem(str(round(current.eps_planck,3))))
+        self.results_table.setItem(0, 5, 
+                    QTableWidgetItem(str(round(current.eps_wien,3))))
+        self.results_table.setItem(0, 6, 
+                    QTableWidgetItem( str( round(current.bg,3))))
 
     def plot_data(self, nam):
         # plot data
