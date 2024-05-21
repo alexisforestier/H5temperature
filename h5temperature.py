@@ -1,8 +1,9 @@
+#*************************** h5temperature program ****************************
 #
-#*********************** h5temperature program ***********************
+#   Author   :    Alexis Forestier
+#   Date     :    may 2024
+#   E-mail   :    alforestier@gmail.com
 #
-#   Copyright (C) 2024 Alexis Forestier
-#   E-mail : alforestier@gmail.com
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -17,10 +18,12 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+#
+#******************************************************************************
 
 import sys
 import numpy as np
-import traceback
+#import traceback
 import h5py
 from scipy.optimize import curve_fit
 import matplotlib
@@ -33,6 +36,10 @@ from PyQt5.QtWidgets import (QApplication,
                              QSpinBox,
                              QCheckBox,
 #                            QDoubleSpinBox,
+                             QTableWidget,
+                             QTableWidgetItem,
+                             QAbstractItemView,
+                             QHeaderView,
                              QGroupBox,
                              QPushButton,
                              QListWidget,
@@ -40,8 +47,8 @@ from PyQt5.QtWidgets import (QApplication,
                              QVBoxLayout,
                              QHBoxLayout,
                              QFileDialog,
-                             QMessageBox)
-
+                             QMessageBox,
+                             QSizePolicy)
 from h5temperaturePhysics import temp2color
 from h5temperatureModels import BlackBodyFromh5
 
@@ -105,7 +112,7 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.resize(1500,900)
+        self.resize(1400,800)
 
         # data stored in self
         self.filepath = str()
@@ -114,12 +121,14 @@ class MainWindow(QWidget):
         # parameters and their default values
         self.pars = dict(lowerb = 550,
                          upperb = 900,
-                         delta = 100)
+                         delta = 100,
+                         usebg = False)
 
         # left layout   
         load_button = QPushButton('Load h5')
         reload_button = QPushButton('Reload')
         clear_button = QPushButton('Clear')
+        exportraw_button = QPushButton('Export current')
 
         topleftbuttonslayout = QHBoxLayout()
         topleftbuttonslayout.addWidget(load_button)
@@ -142,6 +151,7 @@ class MainWindow(QWidget):
         leftlayout.addLayout(currentfile_layout)
         leftlayout.addWidget(self.dataset_list)
         leftlayout.addWidget(clear_button)
+        leftlayout.addWidget(exportraw_button)
 
         left_groupbox = QGroupBox('Data')
         left_groupbox.setLayout(leftlayout)
@@ -152,6 +162,7 @@ class MainWindow(QWidget):
         lowerbound_spinbox = QSpinBox()
         upperbound_spinbox = QSpinBox()
         self.delta_spinbox = QSpinBox()
+        usebg_checkbox = QCheckBox('Use background')
 
         lowerbound_spinbox.setMinimum(1)
         upperbound_spinbox.setMinimum(1)
@@ -164,6 +175,7 @@ class MainWindow(QWidget):
         lowerbound_spinbox.setValue(self.pars.get('lowerb'))
         upperbound_spinbox.setValue(self.pars.get('upperb'))
         self.delta_spinbox.setValue(self.pars.get('delta'))
+        usebg_checkbox.setChecked(self.pars.get('usebg'))
 
         choosedelta_button = QPushButton('Choose delta')
         fit_button = QPushButton('Fit')
@@ -173,10 +185,37 @@ class MainWindow(QWidget):
         fitparam_form.addRow('Upper limit (nm):', upperbound_spinbox)
         fitparam_form.addRow('2-color delta (px):', self.delta_spinbox)
         
+
+        self.results_table = QTableWidget(7,1)
+        self.results_table.setStyleSheet('QTableWidget '
+                                         '{border: 1px solid gray ;'
+                                          'font-weight: bold}')
+        self.results_table.resizeRowsToContents()
+        self.results_table.resizeColumnsToContents()
+        self.results_table.horizontalHeader().setVisible(False)
+        self.results_table.horizontalHeader().setSectionResizeMode( 
+                    QHeaderView.Stretch)
+        self.results_table.verticalHeader().setSectionResizeMode( 
+                    QHeaderView.Stretch)
+        self.results_table.setSizePolicy(QSizePolicy.Preferred, 
+                                QSizePolicy.Preferred)
+        # not selectable, not editable:
+        self.results_table.setSelectionMode(QAbstractItemView.NoSelection)
+        self.results_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.results_table.setVerticalHeaderLabels(["T Planck (K)", 
+                                                    "T Wien (K)",
+                                                    "T 2-color (K)",
+                                                    "T 2-c std dev (K)",
+                                                    "epsilon Planck",
+                                                    "epsilon Wien", 
+                                                    "bg"])
+
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
+        fit_layout.addWidget(usebg_checkbox)
         fit_layout.addWidget(choosedelta_button)
         fit_layout.addWidget(fit_button)
+        fit_layout.addWidget(self.results_table)
         fit_layout.addStretch()
 
         right_groupbox = QGroupBox('Fitting')
@@ -207,7 +246,7 @@ class MainWindow(QWidget):
         layout.addStretch()
         layout.addWidget(center_groupbox, stretch=12)
         layout.addStretch()
-        layout.addWidget(right_groupbox, stretch=2)
+        layout.addWidget(right_groupbox, stretch=3)
         
         self.setLayout(layout)
 
@@ -217,8 +256,13 @@ class MainWindow(QWidget):
         reload_button.clicked.connect(self.reload_h5file)
         clear_button.clicked.connect(self.clear_all)
 
+        exportraw_button.clicked.connect(
+        lambda: \
+            self.export_current_raw(self.dataset_list.currentItem().text()))
+
         choosedelta_button.clicked.connect(
-            lambda: self.choose_delta( self.dataset_list.currentItem().text() ))
+        lambda: \
+            self.choose_delta( self.dataset_list.currentItem().text() ))
 
         lowerbound_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('lowerb', x))
@@ -226,6 +270,9 @@ class MainWindow(QWidget):
                 lambda x: self.pars.__setitem__('upperb', x))
         self.delta_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('delta', x))
+        usebg_checkbox.stateChanged.connect(
+                lambda: self.pars.__setitem__('usebg', 
+                    usebg_checkbox.isChecked()))
 
         self.dataset_list.currentTextChanged.connect(self.update)
 
@@ -291,17 +338,47 @@ class MainWindow(QWidget):
             self.get_h5file_content()
             self.populate_dataset_list()
 
+    def export_current_raw(self, nam):
+        options =  QFileDialog.Options() 
+        #options = QFileDialog.DontUseNativeDialog
+        # ! Must be checked on different platforms !
+        filename, filetype = \
+            QFileDialog.getSaveFileName(self,
+                                        "h5temperature: Export to ASCII", 
+                                        "",
+                                        "Text File (*.txt);;All Files (*)", 
+                                        options=options)
+
+        if filetype == 'Text File (*.txt)':
+            if '.txt' in filename:
+                pass
+            else:
+                filename += '.txt'
+
+        if filename:    
+            current = self.data[nam]
+            data1 = np.column_stack((current.lam,
+                                     current.planck))
+            np.savetxt(filename, 
+                       data1, 
+                       delimiter='\t', 
+                       comments='',
+                       header='lambda\tPlanck')
+
+
     def choose_delta(self, nam):
 
         current = self.data[nam]
 
         _ = [c.remove() for c in self.choosedelta_win.canvas.ax.collections]
+        _ = [l.remove() for l in self.choosedelta_win.canvas.ax.lines]
         #self.choosedelta_win.canvas.ax.collections.clear()
 
         alldeltas = np.array(range(300))
-        allstddevs = np.array( [temp2color(current.lam_infit(), 
-                                current.wien[current._within], di).std() 
-                                for di in alldeltas ] )
+        allstddevs = np.array( [np.nanstd(temp2color(
+                                current.lam[current._ininterval], 
+                                current.wien[current._ininterval], 
+                                di)) for di in alldeltas ] )
 
         self.choosedelta_win.canvas.ax.scatter(alldeltas, 
                                                allstddevs,
@@ -311,7 +388,12 @@ class MainWindow(QWidget):
                                                alpha=0.5,
                                                s=30)
 
-        self.choosedelta_win.canvas.ax.set_ylim([0,2e3])
+        vline = self.choosedelta_win.canvas.ax.axvline(current.pars['delta'],
+                                               color='k',
+                                               linestyle='dashed',
+                                               linewidth=1)
+
+        self.choosedelta_win.canvas.ax.set_ylim([0,3e3])
 
         self.choosedelta_win.canvas.draw()
         self.choosedelta_win.show()
@@ -319,8 +401,11 @@ class MainWindow(QWidget):
         def get_xclick(event):
             x = int(event.xdata)
             self.delta_spinbox.setValue(x)
+            vline.set_xdata([x])
+            self.choosedelta_win.canvas.draw()
+            
             self.update(nam)
-
+            
         # click event
         self.choosedelta_win.canvas.mpl_connect('button_press_event', 
                             get_xclick)
@@ -378,30 +463,49 @@ class MainWindow(QWidget):
         # eval all quantities for a given spectrum
         current = self.data[nam]
         try:
-            current.eval_twocolor()
-            current.eval_wien_fit()
+            # may be cool to run a wien fit without any BG first to get 
+            # an initial Tguess... but may be overkilled. 
             current.eval_planck_fit()
+            current.eval_wien_fit()
+            current.eval_twocolor()
 
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', str(e))
 
     def update(self, nam):
-        # I nam otherwise crash at clear_all()
+        # If nam otherwise crash
         if nam:
             current = self.data[nam]
-            interval = self.pars['lowerb'], self.pars['upperb']
-            delta = self.pars['delta']
 
             self.clear_plots()
-            self.plot_data(nam)
 
             # if parameters have changed then we fit again
-            if not np.logical_and(interval == current.interval,
-                                  delta == current.delta):
-                current.set_interval_and_delta(interval, delta)
+            if not current.pars == self.pars:
+                current.set_pars(self.pars)
                 self.eval_fits(nam)
-
+            
+            # all must be plotted AFTER fit 
+            # since wien can be reevaluated with bg!
+            self.plot_data(nam)
             self.plot_fits(nam)
+            self.update_table(nam)
+
+    def update_table(self, nam):
+        current = self.data[nam]
+        self.results_table.setItem(0, 0, 
+                    QTableWidgetItem(str(round(current.T_planck))))
+        self.results_table.setItem(0, 1, 
+                    QTableWidgetItem(str(round(current.T_wien))))
+        self.results_table.setItem(0, 2, 
+                    QTableWidgetItem(str(round(current.T_twocolor))))
+        self.results_table.setItem(0, 3, 
+                    QTableWidgetItem(str(round(current.T_std_twocolor))))
+        self.results_table.setItem(0, 4, 
+                    QTableWidgetItem(str(round(current.eps_planck,3))))
+        self.results_table.setItem(0, 5, 
+                    QTableWidgetItem(str(round(current.eps_wien,3))))
+        self.results_table.setItem(0, 6, 
+                    QTableWidgetItem( str( round(current.bg))))
 
     def plot_data(self, nam):
         # plot data
@@ -411,17 +515,30 @@ class MainWindow(QWidget):
                                       current.planck, 
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.3,
+                                      alpha=.5,
                                       s=15, 
+                                      zorder=5,
                                       label='Planck data')
 
         self.canvas.axes[0,1].scatter(1 / current.lam, 
                                       current.wien, 
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.3,
+                                      alpha=.5,
                                       s=15, 
+                                      zorder=5,
                                       label='Wien data')
+
+        if current.pars['usebg']:
+            self.canvas.axes[0,1].scatter(1 / current.lam, 
+                                      current.rawwien, 
+                                      edgecolor='k',
+                                      facecolor='lightcoral',
+                                      alpha=.3,
+                                      s=20,
+                                      marker='^', 
+                                      zorder=3,
+                                      label='Wien data (no bg)')
 
        # self.update_legends()
 
@@ -430,93 +547,113 @@ class MainWindow(QWidget):
         current = self.data[nam]
 
         self.canvas.axes[1,0].scatter(
-            current.lam_infit()[:-self.pars['delta']], 
+            current.lam[current._ininterval][:-current.pars['delta']], 
             current.twocolor, 
             edgecolor='k',
             facecolor='royalblue',
-            alpha=.3,
+            alpha=.5,
             s=15, 
+            zorder=5,
             label='two-color data')
 
         h_y, h_x, _ = self.canvas.axes[1,1].hist(current.twocolor, 
-                                   color='royalblue',
+                                   color='darkblue',
                                    bins = 50,
-                                   alpha=.6, 
+                                   alpha=.7, 
+                                   zorder=5,
                                    label='two-color histogram')
 
         # plot fits:
-        self.canvas.axes[0,0].plot(current.lam_infit(),
+        self.canvas.axes[0,0].plot(current.lam[current._ininterval],
                                    current.planck_fit,
                                    color='r',
                                    linewidth=2,
+                                   zorder=7,
                                    label='Planck fit')
 
-        self.canvas.ax_planck_res.scatter(current.lam_infit(), 
+        if current.pars['usebg']:
+            self.canvas.axes[0,0].axhline(current.bg,
+                                          color='k',
+                                          linewidth=1.5,
+                                          linestyle='dashed',
+                                          zorder=3,
+                                          label='background')            
+
+
+        self.canvas.ax_planck_res.scatter(current.lam[current._ininterval], 
                                           current.planck_residuals, 
-                                          color='gray',
-                                          alpha=0.1,
+                                          edgecolor='gray',
+                                          facecolor='none',
+                                          linewidth=1.5,
+                                          alpha=0.3,
                                           s=15, 
+                                          zorder=0,
                                           label='residuals')
 
-        self.canvas.axes[0,1].plot(1 / current.lam_infit(), 
+        self.canvas.axes[0,1].plot(1 / current.lam[current._ininterval], 
                                    current.wien_fit, 
                                    c='r', 
                                    linewidth=2, 
+                                   zorder=7,
                                    label='Wien fit')
 
         self.canvas.axes[1,0].axhline(np.mean(current.twocolor), 
                                       color='r',
                                       linestyle='dashed',
+                                      zorder=7,
                                       label='mean')            
         
-        self.canvas.ax_wien_res.scatter(1 / current.lam_infit(), 
+        self.canvas.ax_wien_res.scatter(1 / current.lam[current._ininterval], 
                                         current.wien_residuals, 
-                                        color='gray',
-                                        alpha=0.1,
+                                        edgecolor='gray',
+                                        facecolor='none',
+                                        linewidth=1.5,
+                                        alpha=0.3,
                                         s=15, 
+                                        zorder=0,
                                         label='residuals')
 
         # texts on plots:
-        self.canvas.axes[0,0].text(0.1, 0.7, 
+        self.canvas.axes[0,0].text(0.05, 0.65, 
                             'T$_\\mathrm{Planck}$= ' + 
                             str( round(current.T_planck) ) + 
                             ' K', 
                             size=17, 
                             color='r', 
-                            zorder=3,
+                            zorder=10,
                             transform=self.canvas.axes[0,0].transAxes)
 
-        self.canvas.axes[0,1].text(0.1, 0.7, 
+        self.canvas.axes[0,1].text(0.05, 0.65, 
                             'T$_\\mathrm{Wien}$= ' + 
                             str( round(current.T_wien) ) + 
                             ' K', 
                             size=17, 
                             color='r', 
-                            zorder=3,
+                            zorder=10,
                             transform=self.canvas.axes[0,1].transAxes)
         
-        self.canvas.axes[1,0].text(0.3, 0.7, 
+        self.canvas.axes[1,0].text(0.2, 0.7, 
                             'T$_\\mathrm{two-color}$= ' + 
                             str( round( current.T_twocolor ) ) + 
                             ' K', 
                             size=17, 
                             color='r', 
-                            zorder=3,
+                            zorder=10,
                             transform=self.canvas.axes[1,0].transAxes)
 
-        self.canvas.axes[1,1].text(0.1, 0.8, 
+        self.canvas.axes[1,1].text(0.05, 0.8, 
                             'std dev. = ' + 
                             str( round( current.T_std_twocolor ) ) + 
                             ' K', 
                             size=17, 
                             color='r', 
-                            zorder=3,
-                                transform=self.canvas.axes[1,1].transAxes)
+                            zorder=10,
+                            transform=self.canvas.axes[1,1].transAxes)
 
         # Custom Autoscales...
         # planck:
-        self.canvas.axes[0,0].set_xlim([current.interval[0] - 100, 
-                                        current.interval[1] + 100]) 
+        self.canvas.axes[0,0].set_xlim([current.pars['lowerb'] - 100, 
+                                        current.pars['upperb'] + 100]) 
 
         self.canvas.axes[0,0].set_ylim([np.min( current.planck_fit - \
                                             0.5*np.ptp(current.planck_fit)),
@@ -529,20 +666,21 @@ class MainWindow(QWidget):
 
         # wien:
         self.canvas.axes[0,1].set_xlim(
-            [np.min( 1 / current.lam_infit() - 0.0002 ),
-             np.max( 1 / current.lam_infit() + 0.0002 )])
+            [np.min( 1 / current.lam[current._ininterval] - 0.0002 ),
+             np.max( 1 / current.lam[current._ininterval] + 0.0002 )])
 
         self.canvas.axes[0,1].set_ylim([np.min( current.wien_fit - \
                                             0.5*np.ptp(current.wien_fit)),
                                         np.max( current.wien_fit + \
                                             0.5*np.ptp(current.wien_fit))])
+        # nanmin/max for cases where I-bg<0:
         self.canvas.ax_wien_res.set_ylim([
-            np.min( current.wien_fit ),
-            np.max( current.wien_fit )])
+            np.nanmin( current.wien_residuals ),
+            np.nanmax( current.wien_residuals )])
 
         # 2color:
-        self.canvas.axes[1,0].set_xlim([current.interval[0],
-                                        current.interval[1] + 20])
+        self.canvas.axes[1,0].set_xlim([current.pars['lowerb'] - 20,
+                                        current.pars['upperb'] + 10])
         self.canvas.axes[1,0].set_ylim(
             [current.T_twocolor - 5 * current.T_std_twocolor, 
              current.T_twocolor + 5 * current.T_std_twocolor])
@@ -551,10 +689,16 @@ class MainWindow(QWidget):
         self.canvas.axes[1,1].set_xlim(
             [current.T_twocolor - 5 * current.T_std_twocolor,
              current.T_twocolor + 5 * current.T_std_twocolor])
-        self.canvas.axes[1,1].set_ylim([0, np.max(h_y) + 10])
-
+        self.canvas.axes[1,1].set_ylim([0, np.max(h_y) + .4*np.max(h_y)])
 
         self.update_legends()
+
+        # required to have residuals BEHIND data points :
+        self.canvas.axes[0,0].set_zorder(2)
+        self.canvas.axes[0,0].set_frame_on(False)
+        self.canvas.axes[0,1].set_zorder(2)
+        self.canvas.axes[0,1].set_frame_on(False)
+
         self.canvas.draw()
 
 

@@ -22,7 +22,8 @@ Python3 packages:
 
 ### From source 
 
-Check you have the requirements above installed for your python3 distribution. Then run 
+__Check you have the requirements above installed for your python3 distribution. Then run__
+
 ```
 python3 h5temperature.py
 ```
@@ -35,11 +36,11 @@ pip install -r requirements.txt
 
 ### Executable for Windows 
 
-Download the latest Release package for Windows, unpack it, and run h5temperature.exe.
+__Download the latest Release package for Windows ([here](https://github.com/alexisforestier/h5temperature/releases/download/v0.0-win10/h5temperature-v0.0-win10.zip)), unpack it, and run *h5temperature.exe.*__ 
 
-In case of errors occurring at launch, particularly regarding module imports, it may be necessary to install Microsoft Visual C++ Redistributable. You can find it here:
 
-[https://learn.microsoft.com/fr-fr/cpp/windows/latest-supported-vc-redist?view=msvc-170](https://learn.microsoft.com/fr-fr/cpp/windows/latest-supported-vc-redist?view=msvc-170).
+> [!NOTE]  
+>In case of errors occurring at launch, particularly regarding module imports, it may be necessary to install Microsoft Visual C++ Redistributable. You can find it here: [https://learn.microsoft.com/fr-fr/cpp/windows/latest-supported-vc-redist?view=msvc-170](https://learn.microsoft.com/fr-fr/cpp/windows/latest-supported-vc-redist?view=msvc-170).
 
 Tested on Windows 10 only.
 
