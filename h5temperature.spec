@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='h5temperature',
+    name='h5temperature v0.1',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

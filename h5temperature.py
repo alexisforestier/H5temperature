@@ -128,6 +128,7 @@ class MainWindow(QWidget):
         load_button = QPushButton('Load h5')
         reload_button = QPushButton('Reload')
         clear_button = QPushButton('Clear')
+        exportraw_button = QPushButton('Export current')
 
         topleftbuttonslayout = QHBoxLayout()
         topleftbuttonslayout.addWidget(load_button)
@@ -150,6 +151,7 @@ class MainWindow(QWidget):
         leftlayout.addLayout(currentfile_layout)
         leftlayout.addWidget(self.dataset_list)
         leftlayout.addWidget(clear_button)
+        leftlayout.addWidget(exportraw_button)
 
         left_groupbox = QGroupBox('Data')
         left_groupbox.setLayout(leftlayout)
@@ -254,8 +256,13 @@ class MainWindow(QWidget):
         reload_button.clicked.connect(self.reload_h5file)
         clear_button.clicked.connect(self.clear_all)
 
+        exportraw_button.clicked.connect(
+        lambda: \
+            self.export_current_raw(self.dataset_list.currentItem().text()))
+
         choosedelta_button.clicked.connect(
-            lambda: self.choose_delta( self.dataset_list.currentItem().text() ))
+        lambda: \
+            self.choose_delta( self.dataset_list.currentItem().text() ))
 
         lowerbound_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('lowerb', x))
@@ -331,6 +338,34 @@ class MainWindow(QWidget):
             self.get_h5file_content()
             self.populate_dataset_list()
 
+    def export_current_raw(self, nam):
+        options =  QFileDialog.Options() 
+        #options = QFileDialog.DontUseNativeDialog
+        # ! Must be checked on different platforms !
+        filename, filetype = \
+            QFileDialog.getSaveFileName(self,
+                                        "h5temperature: Export to ASCII", 
+                                        "",
+                                        "Text File (*.txt);;All Files (*)", 
+                                        options=options)
+
+        if filetype == 'Text File (*.txt)':
+            if '.txt' in filename:
+                pass
+            else:
+                filename += '.txt'
+
+        if filename:    
+            current = self.data[nam]
+            data1 = np.column_stack((current.lam,
+                                     current.planck))
+            np.savetxt(filename, 
+                       data1, 
+                       delimiter='\t', 
+                       comments='',
+                       header='lambda\tPlanck')
+
+
     def choose_delta(self, nam):
 
         current = self.data[nam]
@@ -358,7 +393,7 @@ class MainWindow(QWidget):
                                                linestyle='dashed',
                                                linewidth=1)
 
-        self.choosedelta_win.canvas.ax.set_ylim([0,2.5e3])
+        self.choosedelta_win.canvas.ax.set_ylim([0,3e3])
 
         self.choosedelta_win.canvas.draw()
         self.choosedelta_win.show()
@@ -644,8 +679,8 @@ class MainWindow(QWidget):
             np.nanmax( current.wien_residuals )])
 
         # 2color:
-        self.canvas.axes[1,0].set_xlim([current.pars['lowerb'] - 30,
-                                        current.pars['upperb'] ])
+        self.canvas.axes[1,0].set_xlim([current.pars['lowerb'] - 20,
+                                        current.pars['upperb'] + 10])
         self.canvas.axes[1,0].set_ylim(
             [current.T_twocolor - 5 * current.T_std_twocolor, 
              current.T_twocolor + 5 * current.T_std_twocolor])
