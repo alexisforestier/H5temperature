@@ -6,6 +6,11 @@ h5temperature is a GUI application that allows for the analysis of radiometric t
 wavelength-dependent emissivity, and accuracy of high and very-high temperatures
 measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445](https://doi.org/10.1080/08957950412331331718). 
 
+## What's new (v0.1):
+* Constant background in Planck data fitting is available
+* A table resuming fit results in the right panel
+* Export raw Planck data as ASCII text for further analysis with other tools
+* Solved a few bugs, e.g. now residuals for Wien are printed correctly
 
 ## Requirements 
 
@@ -60,10 +65,8 @@ Currently, exporting data is not supported.
 
 ## Future improvements
 
-* Export the results of the fits.
-* Unique set of parameters for each temperature data.
-* Capability to save and load sessions.
+* Export Wien and Two-color data as ASCII.
+* Save and load sessions.
+* Export results of all fits for the whole session...
 * Recursively locate temperature data from any HDF5 file in the arborescence?
 * Ability to load txt files from other sources than ESRF h5 data.
-* Ability to export data as txt for further analysis/plot...
-* Ability to add a constant background in Planck fits?
