@@ -47,7 +47,8 @@ from PyQt5.QtWidgets import (QApplication,
                              QVBoxLayout,
                              QHBoxLayout,
                              QFileDialog,
-                             QMessageBox)
+                             QMessageBox,
+                             QSizePolicy)
 from h5temperaturePhysics import temp2color
 from h5temperatureModels import BlackBodyFromh5
 
@@ -183,12 +184,21 @@ class MainWindow(QWidget):
         fitparam_form.addRow('2-color delta (px):', self.delta_spinbox)
         
 
-        self.results_table = QTableWidget()
-        self.results_table.setRowCount(7)
-        self.results_table.setColumnCount(1)
+        self.results_table = QTableWidget(7,1)
+        self.results_table.setStyleSheet('QTableWidget '
+                                         '{border: 1px solid gray ;'
+                                          'font-weight: bold}')
+        self.results_table.resizeRowsToContents()
+        self.results_table.resizeColumnsToContents()
         self.results_table.horizontalHeader().setVisible(False)
-        self.results_table.horizontalHeader().setSectionResizeMode(0, 
+        self.results_table.horizontalHeader().setSectionResizeMode( 
                     QHeaderView.Stretch)
+        self.results_table.verticalHeader().setSectionResizeMode( 
+                    QHeaderView.Stretch)
+        self.results_table.setSizePolicy(QSizePolicy.Preferred, 
+                                QSizePolicy.Preferred)
+        # not selectable, not editable:
+        self.results_table.setSelectionMode(QAbstractItemView.NoSelection)
         self.results_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.results_table.setVerticalHeaderLabels(["T Planck (K)", 
                                                     "T Wien (K)",
@@ -460,7 +470,7 @@ class MainWindow(QWidget):
         self.results_table.setItem(0, 5, 
                     QTableWidgetItem(str(round(current.eps_wien,3))))
         self.results_table.setItem(0, 6, 
-                    QTableWidgetItem( str( round(current.bg,3))))
+                    QTableWidgetItem( str( round(current.bg))))
 
     def plot_data(self, nam):
         # plot data
