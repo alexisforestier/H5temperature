@@ -6,7 +6,7 @@ h5temperature is a GUI application that allows for the analysis of radiometric t
 wavelength-dependent emissivity, and accuracy of high and very-high temperatures
 measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445](https://doi.org/10.1080/08957950412331331718). 
 
-## What's new (v0.1):
+## What's new (v0.1)
 * Constant background in Planck data fitting is available
 * A table resuming fit results in the right panel
 * Export raw Planck data as ASCII text for further analysis with other tools
