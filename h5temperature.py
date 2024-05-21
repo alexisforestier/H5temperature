@@ -356,7 +356,7 @@ class MainWindow(QWidget):
         def get_xclick(event):
             x = int(event.xdata)
             self.delta_spinbox.setValue(x)
-            vline.set_xdata(x)
+            vline.set_xdata([x])
             self.choosedelta_win.canvas.draw()
             
             self.update(nam)
