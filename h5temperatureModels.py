@@ -20,7 +20,7 @@ import h5py
 import datetime
 from scipy.optimize import curve_fit
 from copy import deepcopy
-import time
+#import time
 
 import h5temperaturePhysics as Ph
 
@@ -94,7 +94,6 @@ class BlackBodyFromh5():
                                           self.lam <= self.pars['upperb'])
 
     def eval_twocolor(self):
-        start = time.time()
         # calculate 2color 
         self.twocolor = Ph.temp2color(
                         self.lam[self._ininterval], 
@@ -104,11 +103,9 @@ class BlackBodyFromh5():
         self.T_twocolor = np.nanmean(self.twocolor)
         self.T_std_twocolor = np.nanstd(self.twocolor)
         
-        end = time.time()
-        print('time in eval_twocolor = ', end-start)
 
     def eval_wien_fit(self):
-        start = time.time()
+
         # in cases of I-bg < 0, the wien fct returns np.nan:
         keepind = np.isfinite(self.wien[self._ininterval])
         x1 = (1/self.lam[self._ininterval])[keepind]
@@ -122,33 +119,27 @@ class BlackBodyFromh5():
         self.T_wien = 1e9 * 1/a # in K ; as wien fonction use lam in m
         # no factor required for b:
         self.eps_wien = np.exp(- b * Ph.h * Ph.c / Ph.k)
-        end = time.time()
-        print('time in eval_wien_fit = ', end-start)        
+       
 
     def eval_planck_fit(self):
-        start = time.time()
-        # lead to some problem with oscillating Tguess 
-        # hence oscillating solution:
-        #
-        #if self.T_wien:
-        #    Tguess = self.T_wien
-        #else:
-        #    Tguess = 2000
 
-        Tguess=2000
+        if self.T_wien:
+            Tguess = self.T_wien
+        else:
+            Tguess = 2000
+
         # initial values:
         if self.pars['usebg']:
                        # eps,   temp,      bg
-            p0      =  (1e-6, Tguess,        0)
-            pbounds = ((   0,      0,  -np.inf),
-                       (   1,    1e5,  +np.inf))
+            p0      =  (1e-6,  Tguess,        0)
+            pbounds = ((   0,       0,  -np.inf),
+                       (   1,     1e5,  +np.inf))
         else:
                        # eps,   temp
-            p0      =  (1e-6, Tguess)
-            pbounds = ((   0,      0),
-                       (   1,    1e5))
+            p0      =  (1e-6,   Tguess)
+            pbounds = ((   0,        0),
+                       (   1,      1e5))
 
-        #print(p0)
         p_planck, cov_planck = curve_fit(Ph.planck, 
                                          self.lam[self._ininterval], 
                                          self.planck[self._ininterval],                         
@@ -169,33 +160,3 @@ class BlackBodyFromh5():
             self.bg = 0
             # original wien is recovered
             self.wien = self.rawwien
-
-        end = time.time()
-        print('time in eval_planck_fit = ', end-start) 
-
-if __name__ == '__main__':
-
-    with h5py.File('/home/alex/mnt/Data1/ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/hc5078_CDMX18.h5', 'r') as file:
-      #  print(file['CDMX18_rampe01_14.1/measurement'].keys())
-        lam = np.array(file['CDMX18_rampe01_14.1/measurement/spectrum_lambdas'])
-        planck = np.array(file['CDMX18_rampe01_14.1/measurement/planck_data'])
-        
-
-        test = BlackBodyFromh5(file['CDMX18_rampe01_14.1'], 'test1')
-        
-        print( test.lam[40] )
-        print( test.lam[40+50] )
-
-        print( np.argsort(test.lam) )
-
-#        data = np.column_stack((lam, planck))
-#        print(data)
-
-        #import matplotlib.pyplot as plt
-        #plt.plot(data[:,0], data[:,1])
-        #plt.show()
-
-        #np.savetxt('test.csv', data, delimiter = '\t')
-        #x = np.loadtxt('test.csv', delimiter = '\t')
-        #plt.plot(x[:,0], x[:,1])
-        #plt.show()

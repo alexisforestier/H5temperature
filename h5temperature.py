@@ -47,6 +47,19 @@ from h5temperaturePhysics import temp2color
 from h5temperatureModels import BlackBodyFromh5
 
 
+class AboutWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.resize(300,200)
+
+        self.setWindowTitle('About')
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel('good'))
+
+        self.setLayout(layout)
+
 class SinglePlotCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
         self.fig, self.ax = matplotlib.pyplot.subplots(
@@ -56,6 +69,7 @@ class SinglePlotCanvas(FigureCanvasQTAgg):
         self.ax.set_ylabel('two-color temperature std deviation (K)')
 
         super(SinglePlotCanvas, self).__init__(self.fig)
+
 
 class ChooseDeltaWindow(QWidget):
     def __init__(self):
@@ -73,6 +87,7 @@ class ChooseDeltaWindow(QWidget):
         layout.addWidget(self.canvas)
 
         self.setLayout(layout)
+
 
 class PlotsCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
@@ -101,6 +116,7 @@ class PlotsCanvas(FigureCanvasQTAgg):
         self.axes[1,1].set_ylabel('frequency')
 
         super(PlotsCanvas, self).__init__(self.fig)
+
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -235,17 +251,27 @@ class MainWindow(QWidget):
         self.choosedelta_win = ChooseDeltaWindow()
         self.choosedelta_win.setStyleSheet("background-color: white")
 
+        # setup about window
+        self.about_win = AboutWindow()
+
+        # add the about button
+        about_button = QPushButton('About')
+        right_groupbox_about = QVBoxLayout()
+        right_groupbox_about.addWidget(right_groupbox)
+        right_groupbox_about.addWidget(about_button)
+
         layout = QHBoxLayout()
         layout.addWidget(left_groupbox, stretch=3)
         layout.addStretch()
         layout.addWidget(center_groupbox, stretch=12)
         layout.addStretch()
-        layout.addWidget(right_groupbox, stretch=3)
+        layout.addLayout(right_groupbox_about, stretch=3)
         
         self.setLayout(layout)
 
         # CONNECTS
 
+        about_button.clicked.connect(self.show_about)
         load_button.clicked.connect(self.load_h5file)
         reload_button.clicked.connect(self.reload_h5file)
         clear_button.clicked.connect(self.clear_all)
@@ -272,6 +298,9 @@ class MainWindow(QWidget):
 
         fit_button.clicked.connect(lambda: 
             self.update( self.dataset_list.currentItem().text()) )
+
+    def show_about(self):
+        self.about_win.show()
 
 
     def get_h5file_content(self):
@@ -352,17 +381,24 @@ class MainWindow(QWidget):
     
             current = self.data[nam]
 
-            # THIS IS WRONG AS THERE IS THE RANGE E.G 550-920 !!
-            nans = np.empty(len(current.lam) - len(current.twocolor))
-            nans.fill(np.nan) 
-            twocolors_ = np.concatenate( (current.twocolor, nans) )
-            
-            data1 = np.column_stack((current.lam,
+            # create empty array of len(lam) to be saved in txt
+            twocolor_ = np.empty( len(current.lam) )
+            # fill with NaN
+            twocolor_.fill(np.nan) 
+
+            nans = np.empty(current.pars['delta'])
+            nans.fill(np.nan)
+
+            dat1 = np.concatenate([current.twocolor, nans])
+            # populate twocolor_ only where data should be, the rest is nan
+            twocolor_[current._ininterval] = dat1
+
+            data_ = np.column_stack((current.lam,
                                      current.planck,
                                      current.rawwien,
-                                     twocolors_))
+                                     twocolor_))
             np.savetxt(filename, 
-                       data1, 
+                       data_, 
                        delimiter='\t', 
                        comments='',
                        header='lambda\tPlanck\tWien\ttwocolor')
@@ -465,10 +501,15 @@ class MainWindow(QWidget):
         # eval all quantities for a given spectrum
         current = self.data[nam]
         try:
-            # may be cool to run a wien fit without any BG first to get 
-            # an initial Tguess... but may be overkilled. 
-            current.eval_planck_fit()
+            # start with wien to get a reasonable initial value for planck:
             current.eval_wien_fit()
+            current.eval_planck_fit()
+
+            # then refit wien again accounting for bg obtained in Planck:
+            if current.pars['usebg']:
+                current.eval_wien_fit()              
+            
+            # eval two color at the end in all cases
             current.eval_twocolor()
 
         except Exception as e:
@@ -507,7 +548,7 @@ class MainWindow(QWidget):
         self.results_table.setItem(0, 5, 
                     QTableWidgetItem(str(round(current.eps_wien,3))))
         self.results_table.setItem(0, 6, 
-                    QTableWidgetItem( str( round(current.bg))))
+                    QTableWidgetItem(str( round(current.bg))))
 
     def plot_data(self, nam):
         # plot data
@@ -560,7 +601,7 @@ class MainWindow(QWidget):
 
         h_y, h_x, _ = self.canvas.axes[1,1].hist(current.twocolor, 
                                    color='darkblue',
-                                   bins = 50,
+                                   bins = 70,
                                    alpha=.7, 
                                    zorder=5,
                                    label='two-color histogram')
