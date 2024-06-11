@@ -4,5 +4,4 @@ Pillow
 PyQt5
 scipy
 h5py
-pyinstaller
-python-dateutil
+nuitka
