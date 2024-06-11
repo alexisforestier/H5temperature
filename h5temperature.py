@@ -349,21 +349,29 @@ class MainWindow(QWidget):
                                         "Text File (*.txt);;All Files (*)", 
                                         options=options)
 
-        if filetype == 'Text File (*.txt)':
-            if '.txt' in filename:
-                pass
-            else:
-                filename += '.txt'
-
-        if filename:    
+        if filename:
+            if filetype == 'Text File (*.txt)':
+                if '.txt' in filename:
+                    pass
+                else:
+                    filename += '.txt'
+    
             current = self.data[nam]
+
+            # THIS IS WRONG AS THERE IS THE RANGE E.G 550-920 !!
+            nans = np.empty(len(current.lam) - len(current.twocolor))
+            nans.fill(np.nan) 
+            twocolors_ = np.concatenate( (current.twocolor, nans) )
+            
             data1 = np.column_stack((current.lam,
-                                     current.planck))
+                                     current.planck,
+                                     current.rawwien,
+                                     twocolors_))
             np.savetxt(filename, 
                        data1, 
                        delimiter='\t', 
                        comments='',
-                       header='lambda\tPlanck')
+                       header='lambda\tPlanck\tWien\ttwocolor')
 
 
     def choose_delta(self, nam):
@@ -485,7 +493,7 @@ class MainWindow(QWidget):
                 self.eval_fits(nam)
             
             # all must be plotted AFTER fit 
-            # since wien can be reevaluated with bg!
+            # since wien data can be reevaluated with bg!
             self.plot_data(nam)
             self.plot_fits(nam)
             self.update_table(nam)

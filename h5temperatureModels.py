@@ -26,6 +26,7 @@ import h5py
 import datetime
 from scipy.optimize import curve_fit
 from copy import deepcopy
+import time
 
 import h5temperaturePhysics as Ph
 
@@ -99,6 +100,7 @@ class BlackBodyFromh5():
                                           self.lam <= self.pars['upperb'])
 
     def eval_twocolor(self):
+        start = time.time()
         # calculate 2color 
         self.twocolor = Ph.temp2color(
                         self.lam[self._ininterval], 
@@ -107,8 +109,12 @@ class BlackBodyFromh5():
         # nan for cases where I-bg < 0
         self.T_twocolor = np.nanmean(self.twocolor)
         self.T_std_twocolor = np.nanstd(self.twocolor)
+        
+        end = time.time()
+        print('time in eval_twocolor = ', end-start)
 
     def eval_wien_fit(self):
+        start = time.time()
         # in cases of I-bg < 0, the wien fct returns np.nan:
         keepind = np.isfinite(self.wien[self._ininterval])
         x1 = (1/self.lam[self._ininterval])[keepind]
@@ -122,8 +128,11 @@ class BlackBodyFromh5():
         self.T_wien = 1e9 * 1/a # in K ; as wien fonction use lam in m
         # no factor required for b:
         self.eps_wien = np.exp(- b * Ph.h * Ph.c / Ph.k)
+        end = time.time()
+        print('time in eval_wien_fit = ', end-start)        
 
     def eval_planck_fit(self):
+        start = time.time()
         # lead to some problem with oscillating Tguess 
         # hence oscillating solution:
         #
@@ -166,6 +175,9 @@ class BlackBodyFromh5():
             self.bg = 0
             # original wien is recovered
             self.wien = self.rawwien
+
+        end = time.time()
+        print('time in eval_planck_fit = ', end-start) 
 
 if __name__ == '__main__':
 

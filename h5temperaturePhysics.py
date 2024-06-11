@@ -22,6 +22,7 @@
 #******************************************************************************
 
 import numpy as np
+import time
 
 h = 6.62607015e-34 # Planck's constant in J/s
 c = 299792458 # Speed of light in m/s
