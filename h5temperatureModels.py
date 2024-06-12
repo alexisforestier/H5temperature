@@ -1,31 +1,26 @@
-#*************************** h5temperature program ****************************
-#
-#   Author   :    Alexis Forestier
-#   Date     :    may 2024
-#   E-mail   :    alforestier@gmail.com
-#
-#
-#   This program is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   Copyright (C) 2023-2024 Alexis Forestier (alforestier@gmail.com)
+#   
+#   This file is part of h5temperature.
+#   
+#   h5temperature is free software: you can redistribute it and/or modify it 
+#   under the terms of the GNU General Public License as published by the 
+#   Free Software Foundation, either version 3 of the License, or 
 #   (at your option) any later version.
-#
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-#
-#******************************************************************************
+#   
+#   h5temperature is distributed in the hope that it will be useful, 
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of 
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+#   See the GNU General Public License for more details.
+#   
+#   You should have received a copy of the GNU General Public License 
+#   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
 import numpy as np 
 import h5py
 import datetime
 from scipy.optimize import curve_fit
 from copy import deepcopy
+#import time
 
 import h5temperaturePhysics as Ph
 
@@ -107,8 +102,10 @@ class BlackBodyFromh5():
         # nan for cases where I-bg < 0
         self.T_twocolor = np.nanmean(self.twocolor)
         self.T_std_twocolor = np.nanstd(self.twocolor)
+        
 
     def eval_wien_fit(self):
+
         # in cases of I-bg < 0, the wien fct returns np.nan:
         keepind = np.isfinite(self.wien[self._ininterval])
         x1 = (1/self.lam[self._ininterval])[keepind]
@@ -122,30 +119,27 @@ class BlackBodyFromh5():
         self.T_wien = 1e9 * 1/a # in K ; as wien fonction use lam in m
         # no factor required for b:
         self.eps_wien = np.exp(- b * Ph.h * Ph.c / Ph.k)
+       
 
     def eval_planck_fit(self):
-        # lead to some problem with oscillating Tguess 
-        # hence oscillating solution:
-        #
-        #if self.T_wien:
-        #    Tguess = self.T_wien
-        #else:
-        #    Tguess = 2000
 
-        Tguess=2000
+        if self.T_wien:
+            Tguess = self.T_wien
+        else:
+            Tguess = 2000
+
         # initial values:
         if self.pars['usebg']:
                        # eps,   temp,      bg
-            p0      =  (1e-6, Tguess,        0)
-            pbounds = ((   0,      0,  -np.inf),
-                       (   1,    1e5,  +np.inf))
+            p0      =  (1e-6,  Tguess,        0)
+            pbounds = ((   0,       0,  -np.inf),
+                       (   1,     1e5,  +np.inf))
         else:
                        # eps,   temp
-            p0      =  (1e-6, Tguess)
-            pbounds = ((   0,      0),
-                       (   1,    1e5))
+            p0      =  (1e-6,   Tguess)
+            pbounds = ((   0,        0),
+                       (   1,      1e5))
 
-        #print(p0)
         p_planck, cov_planck = curve_fit(Ph.planck, 
                                          self.lam[self._ininterval], 
                                          self.planck[self._ininterval],                         
@@ -166,30 +160,3 @@ class BlackBodyFromh5():
             self.bg = 0
             # original wien is recovered
             self.wien = self.rawwien
-
-if __name__ == '__main__':
-
-    with h5py.File('/home/alex/mnt/Data1/ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/hc5078_CDMX18.h5', 'r') as file:
-      #  print(file['CDMX18_rampe01_14.1/measurement'].keys())
-        lam = np.array(file['CDMX18_rampe01_14.1/measurement/spectrum_lambdas'])
-        planck = np.array(file['CDMX18_rampe01_14.1/measurement/planck_data'])
-        
-
-        test = BlackBodyFromh5(file['CDMX18_rampe01_14.1'], 'test1')
-        
-        print( test.lam[40] )
-        print( test.lam[40+50] )
-
-        print( np.argsort(test.lam) )
-
-#        data = np.column_stack((lam, planck))
-#        print(data)
-
-        #import matplotlib.pyplot as plt
-        #plt.plot(data[:,0], data[:,1])
-        #plt.show()
-
-        #np.savetxt('test.csv', data, delimiter = '\t')
-        #x = np.loadtxt('test.csv', delimiter = '\t')
-        #plt.plot(x[:,0], x[:,1])
-        #plt.show()
