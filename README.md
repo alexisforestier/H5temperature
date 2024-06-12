@@ -9,10 +9,11 @@ wavelength-dependent emissivity, and accuracy of high and very-high temperatures
 measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445](https://doi.org/10.1080/08957950412331331718). 
 
 ## What's new (v0.2)
-* Constant background in Planck data fitting is available
-* A table resuming fit results in the right panel
-* Export data as ASCII for further analysis with other tools
-* Solved a few bugs
+* Executable are now produced using `nuitka` and should be slightly faster.
+* Constant background in Planck data fitting is available.
+* A table resuming fit results in the right panel.
+* Export data as ASCII for further analysis with other tools.
+* Solved a few bugs...
 
 ## Requirements 
 
