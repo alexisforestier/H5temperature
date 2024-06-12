@@ -1,16 +1,18 @@
 # h5temperature
 
+![An example](example.png)
+
 ## Description
 
-h5temperature is a GUI application that allows for the analysis of radiometric temperature measurements within the diamond anvil cell from ESRF HDF5 data files. It allows users to fit data using Planck and Wien formulas, as well as conduct sliding two-color pyrometry analysis. For detailed information on methods, see [Laura Robin Benedetti & Paul Loubeyre (2004), Temperature gradients,
+h5temperature is a user-friendly application designed for analyzing radiometric temperature measurements from laser-heating experiments in diamond anvil cells. It supports ESRF HDF5 data files, offers data fitting with Planck and Wien formulas, and sliding two-color pyrometry analysis. The methods used in h5temperature are detailed in: [Benedetti & Loubeyre (2004), Temperature gradients,
 wavelength-dependent emissivity, and accuracy of high and very-high temperatures
 measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445](https://doi.org/10.1080/08957950412331331718). 
 
-## What's new (v0.1)
+## What's new (v0.2)
 * Constant background in Planck data fitting is available
 * A table resuming fit results in the right panel
-* Export raw Planck data as ASCII text for further analysis with other tools
-* Solved a few bugs, e.g. now residuals for Wien are printed correctly
+* Export data as ASCII for further analysis with other tools
+* Solved a few bugs
 
 ## Requirements 
 
@@ -21,7 +23,6 @@ Python3 packages:
 * matplotlib
 * scipy
 * pyqt5
-* python-dateutil
 
 ## Running the Program
 
@@ -51,22 +52,14 @@ Tested on Windows 10 only.
 
 ## Use 
 
-Use the "Load h5" button to load a specific HDF5 file. **Currently, you must open the .h5 file corresponding to a *newsample('Samplename')* created from BLISS, typically named *Proposalname_Samplename.h5*.** 
+Use the "Load h5" button to load a specific HDF5 file. **Currently, one must open the .h5 file corresponding to a *newsample('Samplename')* created from BLISS, typically named *Proposalname_Samplename.h5*.** 
 All temperature measurements within this file will be displayed.
 
 A first fitting is performed automatically upon clicking. If you make changes to the parameters, click "Fit" to apply them. 
 
-Currently, exporting data is not supported.
-
-## Example
-
-![An example](example.png)
-
-
 ## Future improvements
 
-* Export Wien and Two-color data as ASCII.
 * Save and load sessions.
 * Export results of all fits for the whole session...
-* Recursively locate temperature data from any HDF5 file in the arborescence?
+* Recursively locate temperature data from any HDF5 file in the arborescence.
 * Ability to load txt files from other sources than ESRF h5 data.

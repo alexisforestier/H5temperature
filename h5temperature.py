@@ -17,7 +17,6 @@
 
 import sys
 import numpy as np
-#import traceback
 import h5py
 from scipy.optimize import curve_fit
 import matplotlib
@@ -29,7 +28,6 @@ from PyQt5.QtWidgets import (QApplication,
                              QLabel,
                              QSpinBox,
                              QCheckBox,
-#                            QDoubleSpinBox,
                              QTableWidget,
                              QTableWidgetItem,
                              QAbstractItemView,
@@ -43,22 +41,12 @@ from PyQt5.QtWidgets import (QApplication,
                              QFileDialog,
                              QMessageBox,
                              QSizePolicy)
+
 from h5temperaturePhysics import temp2color
 from h5temperatureModels import BlackBodyFromh5
+from h5temperatureAbout import AboutWindow
 
-
-class AboutWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.resize(300,200)
-
-        self.setWindowTitle('About')
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('good'))
-
-        self.setLayout(layout)
+__version__ = '0.2'
 
 class SinglePlotCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
@@ -122,6 +110,7 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.setWindowTitle('h5temperature {}'.format(__version__))
         self.resize(1400,800)
 
         # data stored in self
