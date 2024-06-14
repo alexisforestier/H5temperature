@@ -1,3 +1,4 @@
+create_executable_linux.sh
 __pycache__/
 .venv/
 build/

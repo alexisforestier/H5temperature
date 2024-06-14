@@ -1,19 +1,26 @@
 # h5temperature
 
-![An example](example.png)
-
 ## Description
 
-h5temperature is a user-friendly application designed for analyzing radiometric temperature measurements from laser-heating experiments in diamond anvil cells. It supports ESRF HDF5 data files, offers data fitting with Planck and Wien formulas, and sliding two-color pyrometry analysis. The methods used in h5temperature are detailed in: [Benedetti & Loubeyre (2004), Temperature gradients,
+`h5temperature` is a user-friendly application designed for analyzing radiometric temperature measurements from laser-heating experiments in diamond anvil cells. __It supports ESRF HDF5 data files__, offers data fitting with Planck and Wien formulas, and sliding two-color pyrometry analysis. 
+
+The methods used in `h5temperature` are detailed in: [Benedetti & Loubeyre (2004), Temperature gradients,
 wavelength-dependent emissivity, and accuracy of high and very-high temperatures
 measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445](https://doi.org/10.1080/08957950412331331718). 
 
-## What's new (v0.2)
+
+## What's new (version 0.2)
+
 * Executable are now produced using `nuitka` and should be slightly faster.
 * Constant background in Planck data fitting is available.
 * A table resuming fit results in the right panel.
 * Export data as ASCII for further analysis with other tools.
 * Solved a few bugs...
+
+
+## Example
+
+![An example](example.png)
 
 ## Requirements 
 
@@ -56,11 +63,12 @@ Tested on Windows 10 only.
 Use the "Load h5" button to load a specific HDF5 file. **Currently, one must open the .h5 file corresponding to a *newsample('Samplename')* created from BLISS, typically named *Proposalname_Samplename.h5*.** 
 All temperature measurements within this file will be displayed.
 
-A first fitting is performed automatically upon clicking. If you make changes to the parameters, click "Fit" to apply them. 
+The fit is performed automatically upon clicking on a measurement in the left panel. If you make changes to the parameters, click "Fit" to apply them. 
 
 ## Future improvements
 
+* Manage datasets containing multiple temperature measurements (e.g. mapping/ramp)
 * Save and load sessions.
-* Export results of all fits for the whole session...
-* Recursively locate temperature data from any HDF5 file in the arborescence.
+* Export an ASCII results table, for the whole session.
+* Recursively locate temperature data from any HDF5 file in the arborescence ? Tried but very long to execute...
 * Ability to load txt files from other sources than ESRF h5 data.
