@@ -34,7 +34,9 @@ from PyQt5.QtWidgets import (QApplication,
                              QHeaderView,
                              QGroupBox,
                              QPushButton,
-                             QListWidget,
+                             #QListWidget,
+                             QTreeWidget,
+                             QTreeWidgetItem,
                              QFormLayout,
                              QVBoxLayout,
                              QHBoxLayout,
@@ -46,7 +48,7 @@ from h5temperaturePhysics import temp2color
 from h5temperatureModels import BlackBodyFromh5
 from h5temperatureAbout import AboutWindow
 
-__version__ = '0.2'
+__version__ = '0.3'
 
 class SinglePlotCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
@@ -142,8 +144,10 @@ class MainWindow(QWidget):
         currentfile_layout.addWidget(currentfile_label, stretch=0)
         currentfile_layout.addWidget(self.currentfilename_label, stretch=10)
 
-        self.dataset_list = QListWidget()
+        self.dataset_list = QTreeWidget()
+        self.dataset_list.setColumnCount(1)
         self.dataset_list.setSelectionMode(1) # single selection
+        self.dataset_list.setHeaderHidden(True)
 
         leftlayout = QVBoxLayout()
         leftlayout.addLayout(topleftbuttonslayout)
@@ -252,7 +256,7 @@ class MainWindow(QWidget):
         layout = QHBoxLayout()
         layout.addWidget(left_groupbox, stretch=3)
         layout.addStretch()
-        layout.addWidget(center_groupbox, stretch=12)
+        layout.addWidget(center_groupbox, stretch=11)
         layout.addStretch()
         layout.addLayout(right_groupbox_about, stretch=3)
         
@@ -283,7 +287,7 @@ class MainWindow(QWidget):
                 lambda: self.pars.__setitem__('usebg', 
                     usebg_checkbox.isChecked()))
 
-        self.dataset_list.currentTextChanged.connect(self.update)
+        self.dataset_list.currentItemChanged.connect(self.update)
 
         fit_button.clicked.connect(lambda: 
             self.update( self.dataset_list.currentItem().text()) )
@@ -321,14 +325,14 @@ class MainWindow(QWidget):
 
                 names_chrono = self.data.keys()
             
-            prev_items = [self.dataset_list.item(x).text() 
-                    for x in range(self.dataset_list.count())]
+            prev_items = [self.dataset_list.topLevelItem(x).text(0) 
+                    for x in range(self.dataset_list.topLevelItemCount())]
             # new items will always be added at the end
             # thus data are in chronological order within 
             # a given h5 loaded but not globally. 
             for n in names_chrono:
                 if n not in prev_items:
-                    self.dataset_list.addItem(n)
+                    self.dataset_list.addTopLevelItem(QTreeWidgetItem([n]))
 
     def load_h5file(self):
         options = QFileDialog.Options()
@@ -504,9 +508,12 @@ class MainWindow(QWidget):
         except Exception as e:
             QMessageBox.critical(self, 'Error', str(e))
 
-    def update(self, nam):
+    def update(self, nam_widget):
         # If nam otherwise crash
-        if nam:
+
+        if nam_widget:
+            # now nam is a QTreeWidgetItem...
+            nam = nam_widget.text(0)
             current = self.data[nam]
 
             self.clear_plots()
