@@ -34,7 +34,6 @@ from PyQt5.QtWidgets import (QApplication,
                              QHeaderView,
                              QGroupBox,
                              QPushButton,
-                             #QListWidget,
                              QTreeWidget,
                              QTreeWidgetItem,
                              QFormLayout,
@@ -71,7 +70,8 @@ class ChooseDeltaWindow(QWidget):
 
         self.canvas = SinglePlotCanvas(self)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)     
-        self.toolbar.setStyleSheet("font-size: 16px;")
+        self.toolbar.setStyleSheet("font-size: 18px;")
+
         layout = QVBoxLayout()
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
@@ -79,7 +79,7 @@ class ChooseDeltaWindow(QWidget):
         self.setLayout(layout)
 
 
-class PlotsCanvas(FigureCanvasQTAgg):
+class FourPlotsCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
 
         self.fig, self.axes = matplotlib.pyplot.subplots(2, 2, 
@@ -105,7 +105,7 @@ class PlotsCanvas(FigureCanvasQTAgg):
         self.axes[1,1].set_xlabel('two-color temperature (K)')
         self.axes[1,1].set_ylabel('frequency')
 
-        super(PlotsCanvas, self).__init__(self.fig)
+        super(FourPlotsCanvas, self).__init__(self.fig)
 
 
 class MainWindow(QWidget):
@@ -115,9 +115,10 @@ class MainWindow(QWidget):
         self.setWindowTitle('h5temperature {}'.format(__version__))
         self.resize(1400,800)
 
-        # data stored in self
+        # data stored in MainWindow
         self.filepath = str()
         self.data = dict()
+        self.selected = None
 
         # parameters and their default values
         self.pars = dict(lowerb = 550,
@@ -144,22 +145,22 @@ class MainWindow(QWidget):
         currentfile_layout.addWidget(currentfile_label, stretch=0)
         currentfile_layout.addWidget(self.currentfilename_label, stretch=10)
 
-        self.dataset_list = QTreeWidget()
-        self.dataset_list.setColumnCount(1)
-        self.dataset_list.setSelectionMode(1) # single selection
-        self.dataset_list.setHeaderHidden(True)
+        self.dataset_tree = QTreeWidget()
+        self.dataset_tree.setColumnCount(1)
+        self.dataset_tree.setSelectionMode(1) # single selection
+        self.dataset_tree.setHeaderHidden(True)
 
         leftlayout = QVBoxLayout()
         leftlayout.addLayout(topleftbuttonslayout)
         leftlayout.addLayout(currentfile_layout)
-        leftlayout.addWidget(self.dataset_list)
+        leftlayout.addWidget(self.dataset_tree)
         leftlayout.addWidget(clear_button)
         leftlayout.addWidget(exportraw_button)
 
         left_groupbox = QGroupBox('Data')
         left_groupbox.setLayout(leftlayout)
 
-        left_groupbox.setMinimumWidth(230)
+        left_groupbox.setMinimumWidth(250)
 
         # right layout
         lowerbound_spinbox = QSpinBox()
@@ -174,7 +175,7 @@ class MainWindow(QWidget):
         upperbound_spinbox.setMaximum(9999)
         self.delta_spinbox.setMaximum(9999)
         
-        # default values:
+        # set default values in Widgets:
         lowerbound_spinbox.setValue(self.pars.get('lowerb'))
         upperbound_spinbox.setValue(self.pars.get('upperb'))
         self.delta_spinbox.setValue(self.pars.get('delta'))
@@ -192,7 +193,9 @@ class MainWindow(QWidget):
         self.results_table = QTableWidget(7,1)
         self.results_table.setStyleSheet('QTableWidget '
                                          '{border: 1px solid gray ;'
-                                          'font-weight: bold}')
+                                          'font-weight: bold ;'
+                                          'background-color: white ;}')
+
         self.results_table.resizeRowsToContents()
         self.results_table.resizeColumnsToContents()
         self.results_table.horizontalHeader().setVisible(False)
@@ -223,18 +226,18 @@ class MainWindow(QWidget):
 
         right_groupbox = QGroupBox('Fitting')
         right_groupbox.setLayout(fit_layout)
-        right_groupbox.setMinimumWidth(200)
+        right_groupbox.setMinimumWidth(250)
 
         # center layout
         center_groupbox = QGroupBox()
         center_groupbox.setStyleSheet('QGroupBox  {border: 2px solid gray;\
-                                                background-color: white;}')
+                                                  background-color: white;}')
         plot_layout = QVBoxLayout()
 
         # set empty plots
-        self.canvas = PlotsCanvas(self)
+        self.canvas = FourPlotsCanvas(self)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
-        self.toolbar.setStyleSheet("font-size: 16px;")
+        self.toolbar.setStyleSheet("font-size: 18px;")
         plot_layout.addWidget(self.toolbar)
         plot_layout.addWidget(self.canvas)
 
@@ -247,7 +250,7 @@ class MainWindow(QWidget):
         # setup about window
         self.about_win = AboutWindow()
 
-        # add the about button
+        # about button
         about_button = QPushButton('About')
         right_groupbox_about = QVBoxLayout()
         right_groupbox_about.addWidget(right_groupbox)
@@ -271,12 +274,19 @@ class MainWindow(QWidget):
 
         exportraw_button.clicked.connect(
         lambda: \
-            self.export_current_raw(self.dataset_list.currentItem().text()))
+            self.export_current_raw(self.dataset_tree.currentItem().text(0)))
 
         choosedelta_button.clicked.connect(
         lambda: \
-            self.choose_delta( self.dataset_list.currentItem().text() ))
+            self.choose_delta( self.dataset_tree.currentItem().text(0) ))
 
+        self.dataset_tree.currentItemChanged.connect(
+            lambda: self.update(self.dataset_tree.currentItem().text(0)))
+
+        fit_button.clicked.connect(lambda: 
+            self.update( self.dataset_tree.currentItem().text(0)) )
+
+        # on change in parameters widgets it is updated in self.pars
         lowerbound_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('lowerb', x))
         upperbound_spinbox.valueChanged.connect(
@@ -287,10 +297,6 @@ class MainWindow(QWidget):
                 lambda: self.pars.__setitem__('usebg', 
                     usebg_checkbox.isChecked()))
 
-        self.dataset_list.currentItemChanged.connect(self.update)
-
-        fit_button.clicked.connect(lambda: 
-            self.update( self.dataset_list.currentItem().text()) )
 
     def show_about(self):
         self.about_win.show()
@@ -300,10 +306,6 @@ class MainWindow(QWidget):
         # read h5 file and store in self.data: 
         with h5py.File(self.filepath, 'r') as file:
             for nam, dat in file.items():
-            # /!\ when hdf5 files are open in another thread
-            # it seems to lead to None in the entire subgroup...
-            # this will need to be checked again...:
-            # Can the last measured T be opened or not on the beamline?
                 if dat is not None: 
                 # get temperature measurements only
                     if 'measurement/T_planck' in dat:
@@ -312,7 +314,7 @@ class MainWindow(QWidget):
                         # populate data:
                             self.data[nam] = BlackBodyFromh5(dat, nam)
 
-    def populate_dataset_list(self):
+    def populate_dataset_tree(self):
         if self.data:
             try:
                 # sort datasets in chronological order
@@ -325,14 +327,16 @@ class MainWindow(QWidget):
 
                 names_chrono = self.data.keys()
             
-            prev_items = [self.dataset_list.topLevelItem(x).text(0) 
-                    for x in range(self.dataset_list.topLevelItemCount())]
+            prev_items = [self.dataset_tree.topLevelItem(x).text(0) 
+                    for x in range(self.dataset_tree.topLevelItemCount())]
             # new items will always be added at the end
             # thus data are in chronological order within 
             # a given h5 loaded but not globally. 
             for n in names_chrono:
                 if n not in prev_items:
-                    self.dataset_list.addTopLevelItem(QTreeWidgetItem([n]))
+                    item_n = QTreeWidgetItem(self.dataset_tree, [n])
+                    #test = QTreeWidgetItem(item_n, ["test1","test2"])
+                    #self.dataset_tree.addTopLevelItem(QTreeWidgetItem([n]))
 
     def load_h5file(self):
         options = QFileDialog.Options()
@@ -346,13 +350,13 @@ class MainWindow(QWidget):
 
         if self.filepath:
             self.get_h5file_content()
-            self.populate_dataset_list()
+            self.populate_dataset_tree()
             self.currentfilename_label.setText(self.filepath.split('/')[-1])
 
     def reload_h5file(self):
         if self.filepath:
             self.get_h5file_content()
-            self.populate_dataset_list()
+            self.populate_dataset_tree()
 
     def export_current_raw(self, nam):
         options =  QFileDialog.Options() 
@@ -401,6 +405,7 @@ class MainWindow(QWidget):
 
         current = self.data[nam]
 
+        # clear previous:
         _ = [c.remove() for c in self.choosedelta_win.canvas.ax.collections]
         _ = [l.remove() for l in self.choosedelta_win.canvas.ax.lines]
         #self.choosedelta_win.canvas.ax.collections.clear()
@@ -508,14 +513,11 @@ class MainWindow(QWidget):
         except Exception as e:
             QMessageBox.critical(self, 'Error', str(e))
 
-    def update(self, nam_widget):
+    def update(self, nam):
         # If nam otherwise crash
+        if nam:
 
-        if nam_widget:
-            # now nam is a QTreeWidgetItem...
-            nam = nam_widget.text(0)
             current = self.data[nam]
-
             self.clear_plots()
 
             # if parameters have changed then we fit again
