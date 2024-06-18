@@ -15,7 +15,7 @@
 #   You should have received a copy of the GNU General Public License 
 #   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
-import numpy as np 
+import numpy as np
 import h5py
 import datetime
 from scipy.optimize import curve_fit
@@ -24,52 +24,70 @@ from copy import deepcopy
 
 import h5temperaturePhysics as Ph
 
-class BlackBodyFromh5():
-    def __init__(self, group, name):
 
-        self.name = name
-        t1 = str(np.array(group['end_time'])[()])
+def get_data_from_h5group(group):
 
-        try:
+    t1 = str(np.array(group['end_time'])[()])
+    
+    try:
+        time = datetime.datetime.strptime(t1, 
+                    "b'%Y-%m-%dT%H:%M:%S.%f%z'")
+    except:
+        # fix for <python3.7, colon not supported in timezone (%z)
+        if t1[-4] == ':':
+            t1 = t1[:-4] + t1[-3:] # remove ":"
             self.time = datetime.datetime.strptime(t1, 
                         "b'%Y-%m-%dT%H:%M:%S.%f%z'")
-            self.timestamp = self.time.timestamp()
+        else:
+            time = None
 
-        except:
-            # fix for <python3.7, colon not supported in timezone (%z)
-            if t1[-4] == ':':
-                t1 = t1[:-4] + t1[-3:] # remove ":"
-                self.time = datetime.datetime.strptime(t1, 
-                            "b'%Y-%m-%dT%H:%M:%S.%f%z'")
-                self.timestamp = self.time.timestamp()
-            else:
-                pass
+    lam = np.array(group['measurement/spectrum_lambdas'])
+    planck = np.array(group['measurement/planck_data'])
 
-        lam1 = np.array(group['measurement/spectrum_lambdas'])
+    if planck.ndim == 1:
+        out = dict(lam=lam, planck=planck, time=time)
+    # manage two dimensional data and return a list of dict:
+    elif planck.ndim == 2:
+        out = []
+        for l,p in zip(lam, planck):
+            out.append( dict(lam=l, planck=p, time=time) )
+    else: 
+        print('~~~> data with higher dimensions than 2 ! <~~~')
+    
+    return out
+
+
+
+
+
+class BlackBodySpec():
+    def __init__(self, name, lam, planck, time=None):
+
         # reordering...
-        ordind = np.argsort(lam1)
+        ordind = np.argsort(lam)
+        self.lam = lam[ordind]
+        self.planck = planck[ordind]
+        
+        self.name = name 
+        self.time = time
+        
+        if self.time:
+            self.timestamp = self.time.timestamp()
+        else:
+            self.timestamp = None
 
-        if lam1.ndim == 1:  # normal case
-            self.lam = lam1[ordind]
-            self.planck = np.array(group['measurement/planck_data'])[ordind]
-
-        # Rare case of a mesh of T measurements -> Unsupported.
-        # no ordering to avoid errors due to indexing with ordind. 
-        else: 
-            self.lam = lam1
-            self.planck = np.array(group['measurement/planck_data'])
 
         self.rawwien = Ph.wien(self.lam, self.planck)
         # wien initialized as rawwien:
         self.wien = self.rawwien
 
+        # pars for a given measurement.
         self.pars = dict(lowerb = None,
                          upperb = None,
                          delta  = None,
                          usebg  = None)
 
-
-        self._ininterval = None
+        self.ind_interval = None
         self.bg = 0
 
         self.twocolor = None
@@ -90,31 +108,32 @@ class BlackBodyFromh5():
     def set_pars(self, pars):
         # deepcopy necessary otherwise always point to the mainwindow pars!
         self.pars = deepcopy(pars)
-        self._ininterval = np.logical_and(self.lam >= self.pars['lowerb'], 
-                                          self.lam <= self.pars['upperb'])
+        self.ind_interval = np.logical_and(self.lam >= self.pars['lowerb'], 
+                                           self.lam <= self.pars['upperb'])
 
     def eval_twocolor(self):
         # calculate 2color 
         self.twocolor = Ph.temp2color(
-                        self.lam[self._ininterval], 
-                        self.wien[self._ininterval], 
+                        self.lam[self.ind_interval], 
+                        self.wien[self.ind_interval], 
                         self.pars['delta'])
-        # nan for cases where I-bg < 0
+        # namean/std for cases where I-bg < 0
         self.T_twocolor = np.nanmean(self.twocolor)
         self.T_std_twocolor = np.nanstd(self.twocolor)
         
 
     def eval_wien_fit(self):
-
         # in cases of I-bg < 0, the wien fct returns np.nan:
-        keepind = np.isfinite(self.wien[self._ininterval])
-        x1 = (1/self.lam[self._ininterval])[keepind]
-        y1 = (self.wien[self._ininterval])[keepind]
+        # we keep only valid data for the fit.
+        keepind = np.isfinite(self.wien[self.ind_interval])
+        
+        x1 = (1/self.lam[self.ind_interval])[keepind]
+        y1 = (self.wien[self.ind_interval])[keepind]
 
         a, b = np.polyfit(x1, y1, 1) # order = 1, linear
         
-        self.wien_fit = a / self.lam[self._ininterval] + b
-        self.wien_residuals = self.wien[self._ininterval] - self.wien_fit
+        self.wien_fit = a / self.lam[self.ind_interval] + b
+        self.wien_residuals = self.wien[self.ind_interval] - self.wien_fit
 
         self.T_wien = 1e9 * 1/a # in K ; as wien fonction use lam in m
         # no factor required for b:
@@ -122,7 +141,7 @@ class BlackBodyFromh5():
        
 
     def eval_planck_fit(self):
-
+        # initial temperature value for the fit...
         if self.T_wien:
             Tguess = self.T_wien
         else:
@@ -133,21 +152,21 @@ class BlackBodyFromh5():
                        # eps,   temp,      bg
             p0      =  (1e-6,  Tguess,        0)
             pbounds = ((   0,       0,  -np.inf),
-                       (   1,     1e5,  +np.inf))
+                       (   1,     5e4,  +np.inf))
         else:
                        # eps,   temp
             p0      =  (1e-6,   Tguess)
             pbounds = ((   0,        0),
-                       (   1,      1e5))
+                       (   1,      5e4))
 
         p_planck, cov_planck = curve_fit(Ph.planck, 
-                                         self.lam[self._ininterval], 
-                                         self.planck[self._ininterval],                         
+                                         self.lam[self.ind_interval], 
+                                         self.planck[self.ind_interval],                         
                                          p0 = p0,
                                          bounds = pbounds)    
 
-        self.planck_fit = Ph.planck(self.lam[self._ininterval], *p_planck)
-        self.planck_residuals = self.planck[self._ininterval] - self.planck_fit
+        self.planck_fit = Ph.planck(self.lam[self.ind_interval], *p_planck)
+        self.planck_residuals = self.planck[self.ind_interval]-self.planck_fit
         self.T_planck = p_planck[1]
         self.eps_planck = p_planck[0]
 
@@ -158,5 +177,54 @@ class BlackBodyFromh5():
         else:
             # if desactivated, bg is set back to 0
             self.bg = 0
-            # original wien is recovered
+            # and original wien is recovered
             self.wien = self.rawwien
+
+
+
+if __name__ == '__main__':
+    
+    import matplotlib.pyplot as plt 
+
+    #with h5py.File('/home/alex/mnt/Data1/' 
+    #    'ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/hc5078_CDMX18.h5', 'r') as file:
+#
+    #    g = file['CDMX18_rampe01_14.1']
+    #    print(g)
+#
+    #    data = get_data_from_h5group(g)
+    #    print(data)
+#
+    #    test = BlackBodySpec('test', **data)
+    #    test.set_pars(dict(usebg=None, delta=113, lowerb=570, upperb = 920))
+#
+    #    print(test.time)
+#
+    #    test.eval_twocolor()
+    #    test.eval_planck_fit()
+    #    test.eval_wien_fit()
+#
+    #    plt.figure(1)
+    #    plt.plot(test.lam, test.planck)
+    #    plt.plot(test.lam[test.ind_interval], test.planck_fit)
+    #    
+    #    plt.figure(2)
+    #    plt.plot(1/test.lam, test.wien)
+    #    plt.plot(1/test.lam[test.ind_interval], test.wien_fit)
+    #    
+    #    plt.figure(3)
+    #    plt.plot(test.lam[test.ind_interval][:-test.pars['delta']], test.twocolor)
+#
+    #    print(test.T_planck)
+    #    print(test.T_wien)
+    #    print(test.T_twocolor)
+    #    print(test.T_std_twocolor)
+#
+    #    plt.show()
+    with h5py.File('/home/alex/mnt/Data1/' 
+        'ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/hc5078_CDMX18.h5', 'r') as file:
+        g = file['CDMX18_mesh_HT_1.1']
+        print(g)
+
+        data = get_data_from_h5group(g)
+        print(data[3])

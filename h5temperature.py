@@ -44,7 +44,7 @@ from PyQt5.QtWidgets import (QApplication,
                              QSizePolicy)
 
 from h5temperaturePhysics import temp2color
-from h5temperatureModels import BlackBodyFromh5
+from h5temperatureModels import get_data_from_h5group, BlackBodySpec
 from h5temperatureAbout import AboutWindow
 
 __version__ = '0.3'
@@ -298,21 +298,24 @@ class MainWindow(QWidget):
                     usebg_checkbox.isChecked()))
 
 
-    def show_about(self):
-        self.about_win.show()
-
 
     def get_h5file_content(self):
         # read h5 file and store in self.data: 
         with h5py.File(self.filepath, 'r') as file:
-            for nam, dat in file.items():
-                if dat is not None: 
+            for nam, group in file.items():
+                if group is not None: 
                 # get temperature measurements only
-                    if 'measurement/T_planck' in dat:
+                    if 'measurement/T_planck' in group:
                     # not already loaded only:
                         if nam not in self.data:
                         # populate data:
-                            self.data[nam] = BlackBodyFromh5(dat, nam)
+                            d = get_data_from_h5group(group)
+                            if type(d) is dict:
+                                self.data[nam] = BlackBodySpec(nam, **d)
+                            elif type(d) is list:
+                                self.data[nam] = dict()
+                                for i, di in enumerate(d):
+                                    self.data[nam][i] = BlackBodySpec(nam,**di)
 
     def populate_dataset_tree(self):
         if self.data:
@@ -335,8 +338,17 @@ class MainWindow(QWidget):
             for n in names_chrono:
                 if n not in prev_items:
                     item_n = QTreeWidgetItem(self.dataset_tree, [n])
+                    if type(self.data[n]) is dict:
+                        for k in self.data[n].keys():
+                            st = '{}({})'.format(n, k)
+                            item_k = QTreeWidgetItem(item_n, [st])
                     #test = QTreeWidgetItem(item_n, ["test1","test2"])
                     #self.dataset_tree.addTopLevelItem(QTreeWidgetItem([n]))
+
+
+    def show_about(self):
+        self.about_win.show()
+
 
     def load_h5file(self):
         options = QFileDialog.Options()
@@ -357,6 +369,8 @@ class MainWindow(QWidget):
         if self.filepath:
             self.get_h5file_content()
             self.populate_dataset_tree()
+
+
 
     def export_current_raw(self, nam):
         options =  QFileDialog.Options() 
@@ -388,7 +402,7 @@ class MainWindow(QWidget):
 
             dat1 = np.concatenate([current.twocolor, nans])
             # populate twocolor_ only where data should be, the rest is nan
-            twocolor_[current._ininterval] = dat1
+            twocolor_[current.ind_interval] = dat1
 
             data_ = np.column_stack((current.lam,
                                      current.planck,
@@ -412,8 +426,8 @@ class MainWindow(QWidget):
 
         alldeltas = np.array(range(300))
         allstddevs = np.array( [np.nanstd(temp2color(
-                                current.lam[current._ininterval], 
-                                current.wien[current._ininterval], 
+                                current.lam[current.ind_interval], 
+                                current.wien[current.ind_interval], 
                                 di)) for di in alldeltas ] )
 
         self.choosedelta_win.canvas.ax.scatter(alldeltas, 
@@ -451,7 +465,7 @@ class MainWindow(QWidget):
         self.filepath = str()
         self.currentfilename_label.setText('')
         self.data = dict()
-        self.dataset_list.clear()
+        self.dataset_tree.clear()
 
         self.clear_plots()
         self.canvas.draw()
@@ -588,7 +602,7 @@ class MainWindow(QWidget):
         current = self.data[nam]
 
         self.canvas.axes[1,0].scatter(
-            current.lam[current._ininterval][:-current.pars['delta']], 
+            current.lam[current.ind_interval][:-current.pars['delta']], 
             current.twocolor, 
             edgecolor='k',
             facecolor='royalblue',
@@ -605,7 +619,7 @@ class MainWindow(QWidget):
                                    label='two-color histogram')
 
         # plot fits:
-        self.canvas.axes[0,0].plot(current.lam[current._ininterval],
+        self.canvas.axes[0,0].plot(current.lam[current.ind_interval],
                                    current.planck_fit,
                                    color='r',
                                    linewidth=2,
@@ -621,7 +635,7 @@ class MainWindow(QWidget):
                                           label='background')            
 
 
-        self.canvas.ax_planck_res.scatter(current.lam[current._ininterval], 
+        self.canvas.ax_planck_res.scatter(current.lam[current.ind_interval], 
                                           current.planck_residuals, 
                                           edgecolor='gray',
                                           facecolor='none',
@@ -631,7 +645,7 @@ class MainWindow(QWidget):
                                           zorder=0,
                                           label='residuals')
 
-        self.canvas.axes[0,1].plot(1 / current.lam[current._ininterval], 
+        self.canvas.axes[0,1].plot(1 / current.lam[current.ind_interval], 
                                    current.wien_fit, 
                                    c='r', 
                                    linewidth=2, 
@@ -644,7 +658,7 @@ class MainWindow(QWidget):
                                       zorder=7,
                                       label='mean')            
         
-        self.canvas.ax_wien_res.scatter(1 / current.lam[current._ininterval], 
+        self.canvas.ax_wien_res.scatter(1 / current.lam[current.ind_interval], 
                                         current.wien_residuals, 
                                         edgecolor='gray',
                                         facecolor='none',
@@ -707,8 +721,8 @@ class MainWindow(QWidget):
 
         # wien:
         self.canvas.axes[0,1].set_xlim(
-            [np.min( 1 / current.lam[current._ininterval] - 0.0002 ),
-             np.max( 1 / current.lam[current._ininterval] + 0.0002 )])
+            [np.min( 1 / current.lam[current.ind_interval] - 0.0002 ),
+             np.max( 1 / current.lam[current.ind_interval] + 0.0002 )])
 
         self.canvas.axes[0,1].set_ylim([np.min( current.wien_fit - \
                                             0.5*np.ptp(current.wien_fit)),
