@@ -49,6 +49,7 @@ from h5temperatureAbout import AboutWindow
 
 __version__ = '0.3'
 
+
 class SinglePlotCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
         self.fig, self.ax = matplotlib.pyplot.subplots(
@@ -257,9 +258,9 @@ class MainWindow(QWidget):
         right_groupbox_about.addWidget(about_button)
 
         layout = QHBoxLayout()
-        layout.addWidget(left_groupbox, stretch=3)
+        layout.addWidget(left_groupbox, stretch=4)
         layout.addStretch()
-        layout.addWidget(center_groupbox, stretch=11)
+        layout.addWidget(center_groupbox, stretch=12)
         layout.addStretch()
         layout.addLayout(right_groupbox_about, stretch=3)
         
@@ -306,16 +307,16 @@ class MainWindow(QWidget):
                 if group is not None: 
                 # get temperature measurements only
                     if 'measurement/T_planck' in group:
-                    # not already loaded only:
+                    # not already loaded only / no identical key!
                         if nam not in self.data:
                         # populate data:
                             d = get_data_from_h5group(group)
                             if type(d) is dict:
                                 self.data[nam] = BlackBodySpec(nam, **d)
                             elif type(d) is list:
-                                self.data[nam] = dict()
                                 for i, di in enumerate(d):
-                                    self.data[nam][i] = BlackBodySpec(nam,**di)
+                                    k = '{}({})'.format(nam, i)
+                                    self.data[k] = BlackBodySpec(nam,**di)
 
     def populate_dataset_tree(self):
         if self.data:
@@ -338,10 +339,10 @@ class MainWindow(QWidget):
             for n in names_chrono:
                 if n not in prev_items:
                     item_n = QTreeWidgetItem(self.dataset_tree, [n])
-                    if type(self.data[n]) is dict:
-                        for k in self.data[n].keys():
-                            st = '{}({})'.format(n, k)
-                            item_k = QTreeWidgetItem(item_n, [st])
+                    #if type(self.data[n]) is dict:
+                    #    for k in self.data[n].keys():
+                    #        st = '{}({})'.format(n, k)
+                    #        item_k = QTreeWidgetItem(item_n, [st])
                     #test = QTreeWidgetItem(item_n, ["test1","test2"])
                     #self.dataset_tree.addTopLevelItem(QTreeWidgetItem([n]))
 
