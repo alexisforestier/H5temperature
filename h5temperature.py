@@ -266,7 +266,7 @@ class MainWindow(QWidget):
         
         self.setLayout(layout)
 
-        # CONNECTS
+        # connects :
 
         about_button.clicked.connect(self.show_about)
         load_button.clicked.connect(self.load_h5file)
@@ -274,18 +274,17 @@ class MainWindow(QWidget):
         clear_button.clicked.connect(self.clear_all)
 
         exportraw_button.clicked.connect(
-        lambda: \
-            self.export_current_raw(self.dataset_tree.currentItem().text(0)))
+            lambda: self.export_current_raw(self.dataset_tree.currentItem()))
 
         choosedelta_button.clicked.connect(
-        lambda: \
-            self.choose_delta( self.dataset_tree.currentItem().text(0) ))
+            lambda: self.choose_delta(self.dataset_tree.currentItem()))
 
-        self.dataset_tree.currentItemChanged.connect(
-            lambda: self.update(self.dataset_tree.currentItem().text(0)))
+#        self.dataset_tree.currentItemChanged.connect(
+#            lambda: self.update(self.dataset_tree.currentItem().text(0)))
+        self.dataset_tree.currentItemChanged.connect(self.update)
 
-        fit_button.clicked.connect(lambda: 
-            self.update( self.dataset_tree.currentItem().text(0)) )
+        fit_button.clicked.connect(
+            lambda: self.update(self.dataset_tree.currentItem()))
 
         # on change in parameters widgets it is updated in self.pars
         lowerbound_spinbox.valueChanged.connect(
@@ -299,6 +298,19 @@ class MainWindow(QWidget):
                     usebg_checkbox.isChecked()))
 
 
+    def get_data_from_tree_item(self, item):
+        if item:
+            key = item.text(0)
+            # if it is a sub item:
+            if item.parent() is not None:
+                parent_key = item.parent().text(0)
+                return self.data[parent_key][key]
+            # if it is a proper individual measurementy:
+            elif item.childCount() == 0:
+                return self.data[key]
+            # it may be the main key of a serie of measurements:
+            else: 
+                return None 
 
     def get_h5file_content(self):
         # read h5 file and store in self.data: 
@@ -314,19 +326,30 @@ class MainWindow(QWidget):
                             if type(d) is dict:
                                 self.data[nam] = BlackBodySpec(nam, **d)
                             elif type(d) is list:
+                                # if multiple measurements, element is a dict:
+                                self.data[nam] = dict()
                                 for i, di in enumerate(d):
-                                    k = '{}({})'.format(nam, i)
-                                    self.data[k] = BlackBodySpec(nam,**di)
+                                    k = '{}'.format(i)
+                                    self.data[nam][k] = BlackBodySpec(nam,**di)
+
 
     def populate_dataset_tree(self):
+        
         if self.data:
+            # sort datasets in chronological order
+            # this may one day be a class method?
+            def get_timestamp(k, elem):
+                if isinstance(elem, dict):
+                    return self.data[k]['0'].timestamp
+                else:
+                    return self.data[k].timestamp
+
             try:
-                # sort datasets in chronological order
                 names_chrono = sorted(self.data.keys(), 
-                            key = lambda k: self.data[k].timestamp)
+                          key = lambda k:  get_timestamp(k, self.data[k]))
             except:
                 QMessageBox.warning(self, 'Warning',
-                'Problem parsing measurement dates and times.\n'
+                'Problem with measurement dates and times.\n'
                 'Chronological order will NOT be used.')     
 
                 names_chrono = self.data.keys()
@@ -339,10 +362,9 @@ class MainWindow(QWidget):
             for n in names_chrono:
                 if n not in prev_items:
                     item_n = QTreeWidgetItem(self.dataset_tree, [n])
-                    #if type(self.data[n]) is dict:
-                    #    for k in self.data[n].keys():
-                    #        st = '{}({})'.format(n, k)
-                    #        item_k = QTreeWidgetItem(item_n, [st])
+                    if type(self.data[n]) is dict:
+                        for k in self.data[n].keys():
+                            item_k = QTreeWidgetItem(item_n, [str(k)])
                     #test = QTreeWidgetItem(item_n, ["test1","test2"])
                     #self.dataset_tree.addTopLevelItem(QTreeWidgetItem([n]))
 
@@ -372,8 +394,7 @@ class MainWindow(QWidget):
             self.populate_dataset_tree()
 
 
-
-    def export_current_raw(self, nam):
+    def export_current_raw(self, item):
         options =  QFileDialog.Options() 
         #options = QFileDialog.DontUseNativeDialog
         # ! Must be checked on different platforms !
@@ -391,7 +412,7 @@ class MainWindow(QWidget):
                 else:
                     filename += '.txt'
     
-            current = self.data[nam]
+            current = self.get_data_from_tree_item(item)
 
             # create empty array of len(lam) to be saved in txt
             twocolor_ = np.empty( len(current.lam) )
@@ -416,9 +437,9 @@ class MainWindow(QWidget):
                        header='lambda\tPlanck\tWien\ttwocolor')
 
 
-    def choose_delta(self, nam):
+    def choose_delta(self, item):
 
-        current = self.data[nam]
+        current = self.get_data_from_tree_item(item)
 
         # clear previous:
         _ = [c.remove() for c in self.choosedelta_win.canvas.ax.collections]
@@ -455,7 +476,7 @@ class MainWindow(QWidget):
             vline.set_xdata([x])
             self.choosedelta_win.canvas.draw()
             
-            self.update(nam)
+            self.update(item)
             
         # click event
         self.choosedelta_win.canvas.mpl_connect('button_press_event', 
@@ -467,6 +488,7 @@ class MainWindow(QWidget):
         self.currentfilename_label.setText('')
         self.data = dict()
         self.dataset_tree.clear()
+        self.results_table.clearContents()
 
         self.clear_plots()
         self.canvas.draw()
@@ -510,9 +532,9 @@ class MainWindow(QWidget):
         #self.canvas.axes[1,0].texts.clear()
         #self.canvas.axes[1,1].texts.clear()
 
-    def eval_fits(self, nam):
+    def eval_fits(self, item):
         # eval all quantities for a given spectrum
-        current = self.data[nam]
+        current = self.get_data_from_tree_item(item)
         try:
             # start with wien to get a reasonable initial value for planck:
             current.eval_wien_fit()
@@ -528,26 +550,32 @@ class MainWindow(QWidget):
         except Exception as e:
             QMessageBox.critical(self, 'Error', str(e))
 
-    def update(self, nam):
-        # If nam otherwise crash
-        if nam:
+    def update(self, item):
+        # If item, otherwise crash
+            current = self.get_data_from_tree_item(item)
 
-            current = self.data[nam]
             self.clear_plots()
 
-            # if parameters have changed then we fit again
-            if not current.pars == self.pars:
-                current.set_pars(self.pars)
-                self.eval_fits(nam)
-            
-            # all must be plotted AFTER fit 
-            # since wien data can be reevaluated with bg!
-            self.plot_data(nam)
-            self.plot_fits(nam)
-            self.update_table(nam)
+            if current:
+                # if parameters have changed then we fit again
+                if not current.pars == self.pars:
+                    current.set_pars(self.pars)
+                    self.eval_fits(item)
+                
+                # all must be plotted AFTER fit 
+                # since wien data can be reevaluated with bg!
+                self.plot_data(item)
+                self.plot_fits(item)
+                self.update_table(item)
+            else:
+                # empty if no data e.g. main item of a serie
+                self.canvas.draw()
+                self.results_table.clearContents()
 
-    def update_table(self, nam):
-        current = self.data[nam]
+    def update_table(self, item):
+
+        current = self.get_data_from_tree_item(item)
+
         self.results_table.setItem(0, 0, 
                     QTableWidgetItem(str(round(current.T_planck))))
         self.results_table.setItem(0, 1, 
@@ -563,9 +591,10 @@ class MainWindow(QWidget):
         self.results_table.setItem(0, 6, 
                     QTableWidgetItem(str( round(current.bg))))
 
-    def plot_data(self, nam):
+
+    def plot_data(self, item):
         # plot data
-        current = self.data[nam]
+        current = self.get_data_from_tree_item(item)
 
         self.canvas.axes[0,0].scatter(current.lam, 
                                       current.planck, 
@@ -598,9 +627,9 @@ class MainWindow(QWidget):
 
        # self.update_legends()
 
-    def plot_fits(self, nam):
+    def plot_fits(self, item):
 
-        current = self.data[nam]
+        current = self.get_data_from_tree_item(item)
 
         self.canvas.axes[1,0].scatter(
             current.lam[current.ind_interval][:-current.pars['delta']], 
