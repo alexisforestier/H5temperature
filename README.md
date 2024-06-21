@@ -9,14 +9,14 @@ wavelength-dependent emissivity, and accuracy of high and very-high temperatures
 measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445](https://doi.org/10.1080/08957950412331331718). 
 
 
-## What's new (version 0.2)
+## What's new (version 0.3)
 
+* Manage datasets containing multiple measurements stored in the same hdf5 sub-group (e.g. mapping, ramps...). 
 * Executable are now produced using `nuitka` and should be slightly faster.
 * Constant background in Planck data fitting is available.
 * A table resuming fit results in the right panel.
 * Export data as ASCII for further analysis with other tools.
-* Solved a few bugs...
-
+* Solved a few bugs and details.
 
 ## Example
 
@@ -50,7 +50,7 @@ pip install -r requirements.txt
 
 ### Executable for Windows 
 
-__Download the latest Release package for Windows ([here](https://github.com/alexisforestier/h5temperature/releases/download/v0.2-win10/h5temperature-v0.2-win10.zip)), unpack it, and run *h5temperature.exe.*__ 
+__Download the latest Release package for Windows ([here](https://github.com/alexisforestier/h5temperature/releases/download/v0.3-win10/h5temperature-v0.3-win10.zip)), unpack it, and run *h5temperature.exe.*__ 
 
 
 > [!NOTE]  
@@ -67,8 +67,7 @@ The fit is performed automatically upon clicking on a measurement in the left pa
 
 ## Future improvements
 
-* Manage datasets containing multiple temperature measurements (e.g. mapping/ramp)
 * Save and load sessions.
-* Export an ASCII results table, for the whole session.
-* Recursively locate temperature data from any HDF5 file in the arborescence ? Tried but very long to execute...
+* Export an ASCII results table, for the whole session?
+* Recursively locate temperature data from any HDF5 file in the arborescence ? Tried, but very long to execute...
 * Ability to load txt files from other sources than ESRF h5 data.
