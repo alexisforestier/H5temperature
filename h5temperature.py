@@ -600,7 +600,7 @@ class MainWindow(QWidget):
                                       current.planck, 
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.5,
+                                      alpha=.4,
                                       s=15, 
                                       zorder=5,
                                       label='Planck data')
@@ -609,7 +609,7 @@ class MainWindow(QWidget):
                                       current.wien, 
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.5,
+                                      alpha=.4,
                                       s=15, 
                                       zorder=5,
                                       label='Wien data')
@@ -636,7 +636,7 @@ class MainWindow(QWidget):
             current.twocolor, 
             edgecolor='k',
             facecolor='royalblue',
-            alpha=.5,
+            alpha=.4,
             s=15, 
             zorder=5,
             label='two-color data')
@@ -670,7 +670,7 @@ class MainWindow(QWidget):
                                           edgecolor='gray',
                                           facecolor='none',
                                           linewidth=1.5,
-                                          alpha=0.3,
+                                          alpha=0.2,
                                           s=15, 
                                           zorder=0,
                                           label='residuals')
@@ -693,7 +693,7 @@ class MainWindow(QWidget):
                                         edgecolor='gray',
                                         facecolor='none',
                                         linewidth=1.5,
-                                        alpha=0.3,
+                                        alpha=0.2,
                                         s=15, 
                                         zorder=0,
                                         label='residuals')
@@ -741,7 +741,7 @@ class MainWindow(QWidget):
                                         current.pars['upperb'] + 100]) 
 
         self.canvas.axes[0,0].set_ylim([np.min( current.planck_fit - \
-                                            0.5*np.ptp(current.planck_fit)),
+                                            0.4*np.ptp(current.planck_fit)),
                                         np.max( current.planck_fit + \
                                             0.5*np.ptp(current.planck_fit))])
 
