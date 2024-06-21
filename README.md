@@ -50,7 +50,7 @@ pip install -r requirements.txt
 
 ### Executable for Windows 
 
-__Download the latest Release package for Windows ([here](https://github.com/alexisforestier/h5temperature/releases/download/v0.3-win10/h5temperature-v0.3-win10.zip)), unpack it, and run *h5temperature.exe.*__ 
+__Download the latest Release package for Windows ([here](https://github.com/alexisforestier/h5temperature/releases/download/v0.3/h5temperature-v0.3-win10.zip)), unpack it, and run *h5temperature.exe.*__ 
 
 
 > [!NOTE]  
