@@ -9,7 +9,7 @@ wavelength-dependent emissivity, and accuracy of high and very-high temperatures
 measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445](https://doi.org/10.1080/08957950412331331718). 
 
 
-## What's new (version 0.3)
+## What's new (current version 0.3.1)
 
 * Manage datasets containing multiple measurements stored in the same hdf5 sub-group (e.g. mapping, ramps...). 
 * Executable are now produced using `nuitka` and should be slightly faster.
