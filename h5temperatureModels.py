@@ -41,8 +41,8 @@ def get_data_from_h5group(group):
         else:
             time = None
 
-    lam = np.array(group['measurement/spectrum_lambdas'])
-    planck = np.array(group['measurement/planck_data'])
+    lam = np.array(group['measurement/spectrum_lambdas']).squeeze()
+    planck = np.array(group['measurement/planck_data']).squeeze()
 
     if planck.ndim == 1:
         out = dict(lam=lam, planck=planck, time=time)
@@ -52,8 +52,8 @@ def get_data_from_h5group(group):
         for l,p in zip(lam, planck):
             out.append( dict(lam=l, planck=p, time=time) )
     else: 
-        print('~~~> data with higher dimensions than 2 ! <~~~')
-    
+        raise ValueError("Array has too many dimensions. " 
+                         "Expected 1 or 2 dimensions")
     return out
 
 
