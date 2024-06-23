@@ -47,7 +47,7 @@ from h5temperaturePhysics import temp2color
 from h5temperatureModels import get_data_from_h5group, BlackBodySpec
 from h5temperatureAbout import AboutWindow
 
-__version__ = '0.3'
+__version__ = '0.3.1'
 
 
 class SinglePlotCanvas(FigureCanvasQTAgg):
