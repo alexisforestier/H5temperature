@@ -36,7 +36,7 @@ def get_data_from_h5group(group):
         # fix for <python3.7, colon not supported in timezone (%z)
         if t1[-4] == ':':
             t1 = t1[:-4] + t1[-3:] # remove ":"
-            self.time = datetime.datetime.strptime(t1, 
+            time = datetime.datetime.strptime(t1, 
                         "b'%Y-%m-%dT%H:%M:%S.%f%z'")
         else:
             time = None
