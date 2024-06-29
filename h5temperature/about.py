@@ -19,7 +19,7 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout
 from PyQt5.QtCore import Qt
 
-__version__ = '0.3.1'
+from h5temperature import __version__
 
 
 class AboutWindow(QWidget):

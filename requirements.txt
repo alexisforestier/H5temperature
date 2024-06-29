@@ -1,7 +1,5 @@
 numpy
 matplotlib
-Pillow
 PyQt5
 scipy
 h5py
-nuitka

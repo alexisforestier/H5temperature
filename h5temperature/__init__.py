@@ -43,11 +43,13 @@ from PyQt5.QtWidgets import (QApplication,
                              QMessageBox,
                              QSizePolicy)
 
-from h5temperaturePhysics import temp2color
-from h5temperatureModels import get_data_from_h5group, BlackBodySpec
-from h5temperatureAbout import AboutWindow
-
 __version__ = '0.3.1'
+
+from .physics import temp2color
+from .models import get_data_from_h5group, BlackBodySpec
+from .about import AboutWindow
+
+
 
 
 class SinglePlotCanvas(FigureCanvasQTAgg):
@@ -797,7 +799,7 @@ class MainWindow(QWidget):
         self.canvas.axes[1,1].legend()
 
 
-if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

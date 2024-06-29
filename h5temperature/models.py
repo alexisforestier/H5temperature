@@ -22,7 +22,7 @@ from scipy.optimize import curve_fit
 from copy import deepcopy
 #import time
 
-import h5temperaturePhysics as Ph
+import h5temperature.physics as Ph
 
 
 def get_data_from_h5group(group):

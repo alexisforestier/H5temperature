@@ -13,7 +13,7 @@ measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445
 
 * Manage datasets containing multiple measurements stored in the same hdf5 sub-group (e.g. mapping, ramps...). 
 * Executable are now produced using `nuitka` and should be slightly faster.
-* Constant background in Planck data fitting is available.
+* Constant background in Planck data fitting is available. This may be removed as intended for tests.
 * A table resuming fit results in the right panel.
 * Export data as ASCII for further analysis with other tools.
 * Solved a few bugs and details.
@@ -39,11 +39,11 @@ Python3 packages:
 __Check you have the requirements above installed for your python3 distribution. Then run__
 
 ```
-python3 h5temperature.py
+python3 run.py
 ```
 or run it through any python interpreter.
 
-To install all required dependencies, run in the source directory:
+To install all required dependencies, run in the H5temperature directory:
 ```
 pip install -r requirements.txt
 ```
