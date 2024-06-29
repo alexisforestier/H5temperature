@@ -20,44 +20,8 @@ import h5py
 import datetime
 from scipy.optimize import curve_fit
 from copy import deepcopy
-#import time
 
 import h5temperature.physics as Ph
-
-
-def get_data_from_h5group(group):
-
-    t1 = str(np.array(group['end_time'])[()])
-    
-    try:
-        time = datetime.datetime.strptime(t1, 
-                    "b'%Y-%m-%dT%H:%M:%S.%f%z'")
-    except:
-        # fix for <python3.7, colon not supported in timezone (%z)
-        if t1[-4] == ':':
-            t1 = t1[:-4] + t1[-3:] # remove ":"
-            time = datetime.datetime.strptime(t1, 
-                        "b'%Y-%m-%dT%H:%M:%S.%f%z'")
-        else:
-            time = None
-
-    lam = np.array(group['measurement/spectrum_lambdas']).squeeze()
-    planck = np.array(group['measurement/planck_data']).squeeze()
-
-    if planck.ndim == 1:
-        out = dict(lam=lam, planck=planck, time=time)
-    # manage two dimensional data and return a list of dict:
-    elif planck.ndim == 2:
-        out = []
-        for l,p in zip(lam, planck):
-            out.append( dict(lam=l, planck=p, time=time) )
-    else: 
-        raise ValueError("Array has too many dimensions. " 
-                         "Expected 1 or 2 dimensions")
-    return out
-
-
-
 
 
 class BlackBodySpec():

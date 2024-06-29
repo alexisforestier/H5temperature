@@ -16,10 +16,9 @@
 #   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
 import numpy as np
-#import time
 
-h = 6.62607015e-34 # Planck's constant in J/s
-c = 299792458 # Speed of light in m/s
+h = 6.62607015e-34   # Planck's constant in J/s
+c = 299792458        # Speed of light in m/s
 k = 1.380649 * 1e-23 # Boltzmann constant in J/K
 
 # all function takes lamb in nm

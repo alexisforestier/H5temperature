@@ -45,9 +45,10 @@ from PyQt5.QtWidgets import (QApplication,
 
 __version__ = '0.3.1'
 
-from .physics import temp2color
-from .models import get_data_from_h5group, BlackBodySpec
-from .about import AboutWindow
+from h5temperature.physics import temp2color
+from h5temperature.models import BlackBodySpec
+from h5temperature.formats import get_data_from_h5group
+from h5temperature.about import AboutWindow
 
 
 
