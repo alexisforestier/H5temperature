@@ -314,7 +314,7 @@ class MainWindow(QWidget):
                'High Pressure Research, 24:4, 423-445</a> <br><br>' \
                'Copyright 2023-2024 Alexis Forestier ' \
                '(alforestier@gmail.com) <br><br>' \
-               '<small><small><small>' \
+               '<small> <small> <small>' \
                'h5temperature is free software: you can redistribute ' \
                'it and/or modify it under the terms of the '  \
                'GNU General Public License as published by the ' \
@@ -329,7 +329,7 @@ class MainWindow(QWidget):
                'Public License along with h5temperature. '  \
                'If not, see <a href=\"https://www.gnu.org/licenses/\">' \
                'https://www.gnu.org/licenses/</a>.' \
-               '</small></small></small>' \
+               '</small> </small> </small>' \
                '</center>' 
         QMessageBox.about(self, "About h5temperature", text)
 
