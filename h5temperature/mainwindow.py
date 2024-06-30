@@ -15,7 +15,9 @@
 #   You should have received a copy of the GNU General Public License 
 #   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
+
 import numpy as np
+import h5py
 from PyQt5.QtWidgets import (QApplication, 
                              QWidget,
                              QLabel,
@@ -37,6 +39,9 @@ from PyQt5.QtWidgets import (QApplication,
                              QSizePolicy)
 
 from h5temperature import __version__
+import h5temperature.physics as Ph 
+from h5temperature.formats import get_data_from_h5group
+from h5temperature.models import BlackBodySpec
 from h5temperature.plots import (FourPlotsCanvas,
                                  ChooseDeltaWindow) 
 
@@ -303,11 +308,13 @@ class MainWindow(QWidget):
         text = '<center>' \
                '<h1>h5temperature</h1>' \
                '<h2>version {}</h2>'.format(__version__) + '<br>' \
-                'Analysis methods used in h5temperature are detailed in: ' \
-                '<a href=\"https://doi.org/10.1080/08957950412331331718\">' \
-                'Benedetti and Loubeyre (2004), ' \
-                'High Pressure Research, 24:4, 423-445</a> <br><br>' \
-               '<small><small>' \
+               'Analysis methods used in h5temperature are detailed in: ' \
+               '<a href=\"https://doi.org/10.1080/08957950412331331718\">' \
+               'Benedetti and Loubeyre (2004), ' \
+               'High Pressure Research, 24:4, 423-445</a> <br><br>' \
+               'Copyright 2023-2024 Alexis Forestier ' \
+               '(alforestier@gmail.com) <br><br>' \
+               '<small><small><small>' \
                'h5temperature is free software: you can redistribute ' \
                'it and/or modify it under the terms of the '  \
                'GNU General Public License as published by the ' \
@@ -321,11 +328,9 @@ class MainWindow(QWidget):
                'You should have received a copy of the GNU General ' \
                'Public License along with h5temperature. '  \
                'If not, see <a href=\"https://www.gnu.org/licenses/\">' \
-               'https://www.gnu.org/licenses/</a>. <br><br>' \
-               '</small></small>' \
-               'Copyright 2023-2024 Alexis Forestier ' \
-               '(alforestier@gmail.com)' \
-               '</center>'
+               'https://www.gnu.org/licenses/</a>.' \
+               '</small></small></small>' \
+               '</center>' 
         QMessageBox.about(self, "About h5temperature", text)
 
 
@@ -397,13 +402,11 @@ class MainWindow(QWidget):
 
         current = self.get_data_from_tree_item(item)
 
-        # clear previous:
-        _ = [c.remove() for c in self.choosedelta_win.canvas.ax.collections]
-        _ = [l.remove() for l in self.choosedelta_win.canvas.ax.lines]
-        #self.choosedelta_win.canvas.ax.collections.clear()
+        # clear previous :
+        self.choosedelta_win.canvas.ax.clear()
 
         alldeltas = np.array(range(300))
-        allstddevs = np.array( [np.nanstd(temp2color(
+        allstddevs = np.array( [np.nanstd(Ph.temp2color(
                                 current.lam[current.ind_interval], 
                                 current.wien[current.ind_interval], 
                                 di)) for di in alldeltas ] )
@@ -450,43 +453,7 @@ class MainWindow(QWidget):
         self.canvas.draw()
 
     def clear_plots(self):
-        # clear previous data on plots
-
-        # seems to be necessary to loop since new version of matplotlib..
-        _ = [c.remove() for c in self.canvas.axes[0,0].collections]
-        _ = [c.remove() for c in self.canvas.axes[0,1].collections]
-        _ = [c.remove() for c in self.canvas.axes[1,0].collections]
-        #self.canvas.axes[0,0].collections.clear()
-        #self.canvas.axes[0,1].collections.clear()
-        #self.canvas.axes[1,0].collections.clear()
-        
-        # to remove histogram bars:
-        _ = [b.remove() for b in self.canvas.axes[1,1].containers]
-
-        _ = [c.remove() for c in self.canvas.ax_planck_res.collections]
-        _ = [c.remove() for c in self.canvas.ax_wien_res.collections]
-        
-        #self.canvas.ax_planck_res.collections.clear()
-        #self.canvas.ax_wien_res.collections.clear()
-
-        
-        _ = [l.remove() for l in self.canvas.axes[0,0].lines]
-        _ = [l.remove() for l in self.canvas.axes[0,1].lines]
-        _ = [l.remove() for l in self.canvas.axes[1,0].lines]
-        _ = [l.remove() for l in self.canvas.axes[1,1].lines]
-        #self.canvas.axes[0,0].lines.clear()
-        #self.canvas.axes[0,1].lines.clear()
-        #self.canvas.axes[1,0].lines.clear()
-        #self.canvas.axes[1,1].lines.clear()
-
-        _ = [t.remove() for t in self.canvas.axes[0,0].texts]
-        _ = [t.remove() for t in self.canvas.axes[0,1].texts]
-        _ = [t.remove() for t in self.canvas.axes[1,0].texts]
-        _ = [t.remove() for t in self.canvas.axes[1,1].texts]
-        #self.canvas.axes[0,0].texts.clear()
-        #self.canvas.axes[0,1].texts.clear()
-        #self.canvas.axes[1,0].texts.clear()
-        #self.canvas.axes[1,1].texts.clear()
+        self.canvas.clear_all()
 
     def eval_fits(self, item):
         # eval all quantities for a given spectrum

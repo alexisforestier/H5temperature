@@ -15,6 +15,7 @@
 #   You should have received a copy of the GNU General Public License 
 #   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -53,6 +54,16 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
     def get_NavigationToolbar(self, parent):
         return NavigationToolbar2QT(self, parent)
+
+
+    def clear_all(self):
+        self.axes[0,0].clear()
+        self.axes[0,1].clear()
+        self.axes[1,0].clear()
+        self.axes[1,1].clear()
+        self.ax_planck_res.clear()
+        self.ax_wien_res.clear()
+
 
 class SinglePlotCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
