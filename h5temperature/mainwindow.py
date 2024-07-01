@@ -56,9 +56,8 @@ class MainWindow(QWidget):
         # data stored in MainWindow
         self.filepath = str()
         self.data = dict()
-        self.selected = None
 
-        # parameters and their default values
+        # current parameters in the mainwindow and their default values
         self.pars = dict(lowerb = 550,
                          upperb = 900,
                          delta = 100,
@@ -175,7 +174,7 @@ class MainWindow(QWidget):
         # set empty plots
         self.canvas = FourPlotsCanvas(self)
         self.toolbar = self.canvas.get_NavigationToolbar(self)
-        self.toolbar.setStyleSheet("font-size: 18px;")
+        self.toolbar.setStyleSheet("font-size: 20px;")
         plot_layout.addWidget(self.toolbar)
         plot_layout.addWidget(self.canvas)
 
@@ -193,7 +192,7 @@ class MainWindow(QWidget):
         right_groupbox_about.addWidget(about_button)
 
         layout = QHBoxLayout()
-        layout.addWidget(left_groupbox, stretch=4)
+        layout.addWidget(left_groupbox, stretch=3)
         layout.addStretch()
         layout.addWidget(center_groupbox, stretch=12)
         layout.addStretch()
@@ -202,7 +201,6 @@ class MainWindow(QWidget):
         self.setLayout(layout)
 
         # connects :
-
         about_button.clicked.connect(self.show_about)
         load_button.clicked.connect(self.load_h5file)
         reload_button.clicked.connect(self.reload_h5file)
@@ -231,7 +229,6 @@ class MainWindow(QWidget):
         usebg_checkbox.stateChanged.connect(
                 lambda: self.pars.__setitem__('usebg', 
                     usebg_checkbox.isChecked()))
-
 
     def get_data_from_tree_item(self, item):
         if item:
@@ -306,8 +303,8 @@ class MainWindow(QWidget):
 
     def show_about(self):
         text = '<center>' \
-               '<h1>h5temperature</h1>' \
-               '<h2>version {}</h2>'.format(__version__) + '<br>' \
+               '<h1> h5temperature </h1>' \
+               '<h2> version {}</h2>'.format(__version__) + '<br>' \
                'Analysis methods used in h5temperature are detailed in: ' \
                '<a href=\"https://doi.org/10.1080/08957950412331331718\">' \
                'Benedetti and Loubeyre (2004), ' \
@@ -331,7 +328,11 @@ class MainWindow(QWidget):
                'https://www.gnu.org/licenses/</a>.' \
                '</small> </small> </small>' \
                '</center>' 
-        QMessageBox.about(self, "About h5temperature", text)
+        msg = QMessageBox(self)
+        msg.setWindowTitle("About h5temperature")
+        msg.setText(text)
+        msg.setStyleSheet("background-color: white;")
+        msg.exec_()
 
 
     def load_h5file(self):
@@ -449,11 +450,9 @@ class MainWindow(QWidget):
         self.dataset_tree.clear()
         self.results_table.clearContents()
 
-        self.clear_plots()
+        self.canvas.clear()
         self.canvas.draw()
 
-    def clear_plots(self):
-        self.canvas.clear_all()
 
     def eval_fits(self, item):
         # eval all quantities for a given spectrum
@@ -477,7 +476,7 @@ class MainWindow(QWidget):
         # If item, otherwise crash
             current = self.get_data_from_tree_item(item)
 
-            self.clear_plots()
+            self.canvas.clear()
 
             if current:
                 # if parameters have changed then we fit again
@@ -699,7 +698,7 @@ class MainWindow(QWidget):
              current.T_twocolor + 5 * current.T_std_twocolor])
         self.canvas.axes[1,1].set_ylim([0, np.max(h_y) + .4*np.max(h_y)])
 
-        self.update_legends()
+        self.canvas.update_legends()
 
         # required to have residuals BEHIND data points :
         self.canvas.axes[0,0].set_zorder(2)
@@ -708,14 +707,3 @@ class MainWindow(QWidget):
         self.canvas.axes[0,1].set_frame_on(False)
 
         self.canvas.draw()
-
-
-    def update_legends(self):
-        # legends
-        self.canvas.axes[0,0].legend(loc='upper left')
-        self.canvas.ax_planck_res.legend(loc='upper right')
-        self.canvas.axes[0,1].legend(loc='upper left')   
-        self.canvas.ax_wien_res.legend(loc='upper right')
-        self.canvas.axes[1,0].legend() 
-        self.canvas.axes[1,1].legend()
-

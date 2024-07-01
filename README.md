@@ -8,20 +8,6 @@ The methods used in `h5temperature` are detailed in: [Benedetti & Loubeyre (2004
 wavelength-dependent emissivity, and accuracy of high and very-high temperatures
 measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445](https://doi.org/10.1080/08957950412331331718). 
 
-
-## What's new (current version 0.3.1)
-
-* Manage datasets containing multiple measurements stored in the same hdf5 sub-group (e.g. mapping, ramps...). 
-* Executable are now produced using `nuitka` and should be slightly faster.
-* Constant background in Planck data fitting is available. This may be removed as intended for tests.
-* A table resuming fit results in the right panel.
-* Export data as ASCII for further analysis with other tools.
-* Solved a few bugs and details.
-
-## Example
-
-![An example](example.png)
-
 ## Requirements 
 
 Python3 packages:
@@ -50,13 +36,12 @@ pip install -r requirements.txt
 
 ### Executable for Windows 
 
-__Download the latest Release package for Windows ([here](https://github.com/alexisforestier/h5temperature/releases/download/v0.3/h5temperature-v0.3-win10.zip)), unpack it, and run *h5temperature.exe.*__ 
-
+__Download the latest Release for Windows ([here](https://github.com/alexisforestier/H5temperature/releases)), unpack it, and run *h5temperature.exe.*__ 
+Tested on Windows 10 only
 
 > [!NOTE]  
 >In case of errors occurring at launch, particularly regarding module imports, it may be necessary to install Microsoft Visual C++ Redistributable. You can find it here: [https://learn.microsoft.com/fr-fr/cpp/windows/latest-supported-vc-redist?view=msvc-170](https://learn.microsoft.com/fr-fr/cpp/windows/latest-supported-vc-redist?view=msvc-170).
 
-Tested on Windows 10 only.
 
 ## Use 
 
@@ -69,5 +54,5 @@ The fit is performed automatically upon clicking on a measurement in the left pa
 
 * Save and load sessions.
 * Export an ASCII results table, for the whole session?
-* Recursively locate temperature data from any HDF5 file in the arborescence ? Tried, but very long to execute...
+* Recursively locate temperature data from any HDF5 file in the arborescence? Tried but long!
 * Ability to load txt files from other sources than ESRF h5 data.

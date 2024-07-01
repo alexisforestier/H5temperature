@@ -55,14 +55,24 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
     def get_NavigationToolbar(self, parent):
         return NavigationToolbar2QT(self, parent)
 
+    def update_legends(self):
+        # legends
+        self.axes[0,0].legend(loc='upper left')
+        self.ax_planck_res.legend(loc='upper right')
+        self.axes[0,1].legend(loc='upper left')   
+        self.ax_wien_res.legend(loc='upper right')
+        self.axes[1,0].legend() 
+        self.axes[1,1].legend()
 
-    def clear_all(self):
+    def clear(self):
         self.axes[0,0].clear()
         self.axes[0,1].clear()
         self.axes[1,0].clear()
         self.axes[1,1].clear()
         self.ax_planck_res.clear()
         self.ax_wien_res.clear()
+
+
 
 
 class SinglePlotCanvas(FigureCanvasQTAgg):
