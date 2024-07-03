@@ -117,12 +117,12 @@ class BlackBodySpec():
                        # eps,   temp,      bg
             p0      =  (1e-6,  Tguess,        0)
             pbounds = ((   0,       0,  -np.inf),
-                       (   1,     5e4,  +np.inf))
+                       (+np.inf,     5e4,  +np.inf))
         else:
                        # eps,   temp
             p0      =  (1e-6,   Tguess)
             pbounds = ((   0,        0),
-                       (   1,      5e4))
+                       (+np.inf,      5e4))
 
         p_planck, cov_planck = curve_fit(Ph.planck, 
                                          self.lam[self.ind_interval], 

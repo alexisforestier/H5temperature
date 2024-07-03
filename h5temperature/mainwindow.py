@@ -42,8 +42,8 @@ from h5temperature import __version__
 import h5temperature.physics as Ph 
 from h5temperature.formats import get_data_from_h5group
 from h5temperature.models import BlackBodySpec
-from h5temperature.plots import (FourPlotsCanvas,
-                                 ChooseDeltaWindow) 
+from h5temperature.views import (FourPlotsCanvas,
+                                 ChooseDeltaWindow)
 
 
 class MainWindow(QWidget):

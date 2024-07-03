@@ -16,7 +16,7 @@
 #   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
 
-__version__ = '0.3.1'
+__version__ = '0.4.0'
 
 import sys
 from PyQt5.QtWidgets import QApplication

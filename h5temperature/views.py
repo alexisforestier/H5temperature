@@ -75,7 +75,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
 
 
-class SinglePlotCanvas(FigureCanvasQTAgg):
+class ChooseDeltaPlotCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
         self.fig, self.ax = plt.subplots(
             constrained_layout=True)
@@ -83,7 +83,7 @@ class SinglePlotCanvas(FigureCanvasQTAgg):
         self.ax.set_xlabel('delta (px)')
         self.ax.set_ylabel('two-color temperature std deviation (K)')
 
-        super(SinglePlotCanvas, self).__init__(self.fig)
+        super(ChooseDeltaPlotCanvas, self).__init__(self.fig)
 
 
 class ChooseDeltaWindow(QWidget):
@@ -94,7 +94,7 @@ class ChooseDeltaWindow(QWidget):
 
         self.setWindowTitle('Choose delta...')
 
-        self.canvas = SinglePlotCanvas(self)
+        self.canvas = ChooseDeltaPlotCanvas(self)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)     
         self.toolbar.setStyleSheet("font-size: 18px;")
 
