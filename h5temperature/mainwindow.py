@@ -221,6 +221,12 @@ class MainWindow(QWidget):
         self.delta_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('delta', x))
 
+        lowerbound_spinbox.editingFinished.connect(
+            lambda: self.update(self.dataset_tree.currentItem()))
+        upperbound_spinbox.editingFinished.connect(
+            lambda: self.update(self.dataset_tree.currentItem()))
+        self.delta_spinbox.editingFinished.connect(
+            lambda: self.update(self.dataset_tree.currentItem()))
 
     def get_data_from_tree_item(self, item):
         if item:
@@ -427,6 +433,7 @@ class MainWindow(QWidget):
             vline.set_xdata([x])
             self.choosedelta_win.canvas.draw()
             
+            # necessary as editingFinished does not send signal here
             self.update(item)
             
         # click event
