@@ -60,8 +60,7 @@ class MainWindow(QWidget):
         # current parameters in the mainwindow and their default values
         self.pars = dict(lowerb = 550,
                          upperb = 900,
-                         delta = 100,
-                         usebg = False)
+                         delta = 100)
 
         # left layout   
         load_button = QPushButton('Load h5')
@@ -103,7 +102,6 @@ class MainWindow(QWidget):
         lowerbound_spinbox = QSpinBox()
         upperbound_spinbox = QSpinBox()
         self.delta_spinbox = QSpinBox()
-        usebg_checkbox = QCheckBox('Use background')
 
         lowerbound_spinbox.setMinimum(1)
         upperbound_spinbox.setMinimum(1)
@@ -116,7 +114,6 @@ class MainWindow(QWidget):
         lowerbound_spinbox.setValue(self.pars.get('lowerb'))
         upperbound_spinbox.setValue(self.pars.get('upperb'))
         self.delta_spinbox.setValue(self.pars.get('delta'))
-        usebg_checkbox.setChecked(self.pars.get('usebg'))
 
         choosedelta_button = QPushButton('Choose delta')
         fit_button = QPushButton('Fit')
@@ -127,7 +124,7 @@ class MainWindow(QWidget):
         fitparam_form.addRow('2-color delta (px):', self.delta_spinbox)
         
 
-        self.results_table = QTableWidget(7,1)
+        self.results_table = QTableWidget(6,1)
         self.results_table.setStyleSheet('QTableWidget '
                                          '{border: 1px solid gray ;'
                                           'font-weight: bold ;'
@@ -149,13 +146,11 @@ class MainWindow(QWidget):
                                                     "T Wien (K)",
                                                     "T 2-color (K)",
                                                     "T 2-c std dev (K)",
-                                                    "epsilon Planck",
-                                                    "epsilon Wien", 
-                                                    "bg"])
+                                                    "multiplier Planck",
+                                                    "multiplier Wien"])
 
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
-        fit_layout.addWidget(usebg_checkbox)
         fit_layout.addWidget(choosedelta_button)
         fit_layout.addWidget(fit_button)
         fit_layout.addWidget(self.results_table)
@@ -174,7 +169,7 @@ class MainWindow(QWidget):
         # set empty plots
         self.canvas = FourPlotsCanvas(self)
         self.toolbar = self.canvas.get_NavigationToolbar(self)
-        self.toolbar.setStyleSheet("font-size: 20px;")
+        self.toolbar.setStyleSheet("font-size: 18px;")
         plot_layout.addWidget(self.toolbar)
         plot_layout.addWidget(self.canvas)
 
@@ -183,7 +178,6 @@ class MainWindow(QWidget):
         # setup choosedelta window
         self.choosedelta_win = ChooseDeltaWindow()
         self.choosedelta_win.setStyleSheet("background-color: white")
-
 
         # about button
         about_button = QPushButton('About')
@@ -226,9 +220,7 @@ class MainWindow(QWidget):
                 lambda x: self.pars.__setitem__('upperb', x))
         self.delta_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('delta', x))
-        usebg_checkbox.stateChanged.connect(
-                lambda: self.pars.__setitem__('usebg', 
-                    usebg_checkbox.isChecked()))
+
 
     def get_data_from_tree_item(self, item):
         if item:
@@ -265,8 +257,7 @@ class MainWindow(QWidget):
                                     self.data[nam][k] = BlackBodySpec(nam,**di)
 
 
-    def populate_dataset_tree(self):
-        
+    def populate_dataset_tree(self):        
         if self.data:
             # sort datasets in chronological order
             # this may one day be a class method?
@@ -390,7 +381,7 @@ class MainWindow(QWidget):
 
             data_ = np.column_stack((current.lam,
                                      current.planck,
-                                     current.rawwien,
+                                     current.wien,
                                      twocolor_))
             np.savetxt(filename, 
                        data_, 
@@ -407,7 +398,7 @@ class MainWindow(QWidget):
         self.choosedelta_win.canvas.ax.clear()
 
         alldeltas = np.array(range(300))
-        allstddevs = np.array( [np.nanstd(Ph.temp2color(
+        allstddevs = np.array( [np.std(Ph.temp2color(
                                 current.lam[current.ind_interval], 
                                 current.wien[current.ind_interval], 
                                 di)) for di in alldeltas ] )
@@ -460,12 +451,7 @@ class MainWindow(QWidget):
         try:
             # start with wien to get a reasonable initial value for planck:
             current.eval_wien_fit()
-            current.eval_planck_fit()
-
-            # then refit wien again accounting for bg obtained in Planck:
-            if current.pars['usebg']:
-                current.eval_wien_fit()              
-            
+            current.eval_planck_fit()            
             # eval two color at the end in all cases
             current.eval_twocolor()
 
@@ -480,12 +466,11 @@ class MainWindow(QWidget):
 
             if current:
                 # if parameters have changed then we fit again
+                # if current was never fitted current.pars is None 
                 if not current.pars == self.pars:
                     current.set_pars(self.pars)
                     self.eval_fits(item)
                 
-                # all must be plotted AFTER fit 
-                # since wien data can be reevaluated with bg!
                 self.plot_data(item)
                 self.plot_fits(item)
                 self.update_table(item)
@@ -510,9 +495,6 @@ class MainWindow(QWidget):
                     QTableWidgetItem(str(round(current.eps_planck,3))))
         self.results_table.setItem(0, 5, 
                     QTableWidgetItem(str(round(current.eps_wien,3))))
-        self.results_table.setItem(0, 6, 
-                    QTableWidgetItem(str( round(current.bg))))
-
 
     def plot_data(self, item):
         # plot data
@@ -535,19 +517,6 @@ class MainWindow(QWidget):
                                       s=15, 
                                       zorder=5,
                                       label='Wien data')
-
-        if current.pars['usebg']:
-            self.canvas.axes[0,1].scatter(1 / current.lam, 
-                                      current.rawwien, 
-                                      edgecolor='k',
-                                      facecolor='lightcoral',
-                                      alpha=.3,
-                                      s=20,
-                                      marker='^', 
-                                      zorder=3,
-                                      label='Wien data (no bg)')
-
-       # self.update_legends()
 
     def plot_fits(self, item):
 
@@ -577,15 +546,6 @@ class MainWindow(QWidget):
                                    linewidth=2,
                                    zorder=7,
                                    label='Planck fit')
-
-        if current.pars['usebg']:
-            self.canvas.axes[0,0].axhline(current.bg,
-                                          color='k',
-                                          linewidth=1.5,
-                                          linestyle='dashed',
-                                          zorder=3,
-                                          label='background')            
-
 
         self.canvas.ax_planck_res.scatter(current.lam[current.ind_interval], 
                                           current.planck_residuals, 
@@ -680,10 +640,10 @@ class MainWindow(QWidget):
                                             0.5*np.ptp(current.wien_fit)),
                                         np.max( current.wien_fit + \
                                             0.5*np.ptp(current.wien_fit))])
-        # nanmin/max for cases where I-bg<0:
+
         self.canvas.ax_wien_res.set_ylim([
-            np.nanmin( current.wien_residuals ),
-            np.nanmax( current.wien_residuals )])
+            np.min( current.wien_residuals ),
+            np.max( current.wien_residuals )])
 
         # 2color:
         self.canvas.axes[1,0].set_xlim([current.pars['lowerb'] - 20,

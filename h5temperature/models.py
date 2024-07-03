@@ -33,7 +33,7 @@ class BlackBodySpec():
         self.lam = lam[ordind]
         self.planck = planck[ordind]
         
-        self.name = name 
+        self.name = name
         self.time = time
         
         if self.time:
@@ -41,19 +41,14 @@ class BlackBodySpec():
         else:
             self.timestamp = None
 
-
-        self.rawwien = Ph.wien(self.lam, self.planck)
-        # wien initialized as rawwien:
-        self.wien = self.rawwien
+        self.wien = Ph.wien(self.lam, self.planck)
 
         # pars for a given measurement.
         self.pars = dict(lowerb = None,
                          upperb = None,
-                         delta  = None,
-                         usebg  = None)
+                         delta  = None)
 
         self.ind_interval = None
-        self.bg = 0
 
         self.twocolor = None
         self.T_twocolor = None
@@ -82,18 +77,15 @@ class BlackBodySpec():
                         self.lam[self.ind_interval], 
                         self.wien[self.ind_interval], 
                         self.pars['delta'])
-        # namean/std for cases where I-bg < 0
-        self.T_twocolor = np.nanmean(self.twocolor)
-        self.T_std_twocolor = np.nanstd(self.twocolor)
+
+        self.T_twocolor = np.mean(self.twocolor)
+        self.T_std_twocolor = np.std(self.twocolor)
         
 
     def eval_wien_fit(self):
-        # in cases of I-bg < 0, the wien fct returns np.nan:
-        # we keep only valid data for the fit.
-        keepind = np.isfinite(self.wien[self.ind_interval])
         
-        x1 = (1/self.lam[self.ind_interval])[keepind]
-        y1 = (self.wien[self.ind_interval])[keepind]
+        x1 = (1/self.lam[self.ind_interval])
+        y1 = (self.wien[self.ind_interval])
 
         a, b = np.polyfit(x1, y1, 1) # order = 1, linear
         
@@ -109,20 +101,15 @@ class BlackBodySpec():
         # initial temperature value for the fit...
         if self.T_wien:
             Tguess = self.T_wien
+            eps_guess = self.eps_wien
         else:
             Tguess = 2000
+            eps_guess = 1e-6
 
-        # initial values:
-        if self.pars['usebg']:
-                       # eps,   temp,      bg
-            p0      =  (1e-6,  Tguess,        0)
-            pbounds = ((   0,       0,  -np.inf),
-                       (+np.inf,     5e4,  +np.inf))
-        else:
-                       # eps,   temp
-            p0      =  (1e-6,   Tguess)
-            pbounds = ((   0,        0),
-                       (+np.inf,      5e4))
+                   # eps     ,   temp
+        p0      =  (eps_guess,   Tguess)
+        pbounds = ((        0,        0),
+                   (  +np.inf,      2e4))
 
         p_planck, cov_planck = curve_fit(Ph.planck, 
                                          self.lam[self.ind_interval], 
@@ -134,16 +121,3 @@ class BlackBodySpec():
         self.planck_residuals = self.planck[self.ind_interval]-self.planck_fit
         self.T_planck = p_planck[1]
         self.eps_planck = p_planck[0]
-
-        if self.pars['usebg']:
-            self.bg = p_planck[-1]
-            self.wien = Ph.wien(self.lam, self.planck, self.bg)
-
-        else:
-            # if desactivated, bg is set back to 0
-            self.bg = 0
-            # and original wien is recovered
-            self.wien = self.rawwien
-
-
-
