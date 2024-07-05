@@ -15,7 +15,6 @@
 #   You should have received a copy of the GNU General Public License 
 #   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
-
 import numpy as np
 import h5py
 from PyQt5.QtWidgets import (QApplication, 
@@ -40,7 +39,7 @@ from PyQt5.QtWidgets import (QApplication,
 
 from h5temperature import __version__
 import h5temperature.physics as Ph 
-from h5temperature.formats import get_data_from_h5group
+from h5temperature.formats import get_data_from_h5group, get_data_from_ascii
 from h5temperature.models import BlackBodySpec
 from h5temperature.views import (FourPlotsCanvas,
                                  ChooseDeltaWindow)
@@ -65,12 +64,15 @@ class MainWindow(QWidget):
         # left layout   
         load_button = QPushButton('Load h5')
         reload_button = QPushButton('Reload')
+        loadascii_button = QPushButton('Load ASCII')
         clear_button = QPushButton('Clear')
         exportraw_button = QPushButton('Export current')
 
         topleftbuttonslayout = QHBoxLayout()
         topleftbuttonslayout.addWidget(load_button)
         topleftbuttonslayout.addWidget(reload_button)
+        topleftbuttonslayout.addWidget(loadascii_button)
+        
 
         currentfile_layout = QHBoxLayout()
         currentfile_label = QLabel('Current file:')
@@ -197,6 +199,7 @@ class MainWindow(QWidget):
         # connects :
         about_button.clicked.connect(self.show_about)
         load_button.clicked.connect(self.load_h5file)
+        loadascii_button.clicked.connect(self.load_ascii)
         reload_button.clicked.connect(self.reload_h5file)
         clear_button.clicked.connect(self.clear_all)
 
@@ -339,7 +342,7 @@ class MainWindow(QWidget):
 
     #   options |= QFileDialog.DontUseNativeDialog
         self.filepath, _ = QFileDialog.getOpenFileName(self,
-            "Load HDF5 file", "","HDF5 file (*.h5)", 
+            "Load HDF5 file", "","HDF5 file *.h5 *.hdf5 (*.h5 *.hdf5)", 
             options=options)
 
         if self.filepath:
@@ -352,7 +355,26 @@ class MainWindow(QWidget):
             self.get_h5file_content()
             self.populate_dataset_tree()
 
+    def load_ascii(self):
+        options = QFileDialog.Options()
+        # ! use Native dialog or qt dialog... 
+        # ! Must be checked on different platforms !
 
+    #   options |= QFileDialog.DontUseNativeDialog
+        self.filepath, _ = QFileDialog.getOpenFileName(self,
+            "Load Text file", "","Text File *.txt *.dat *.asc "
+                        "(*.txt *.dat *.asc);;Any File *.* (*.*)", 
+            options=options)
+
+        if self.filepath:
+            d = get_data_from_ascii(self.filepath)
+
+            name = self.filepath.split('/')[-1]
+            # populate
+            self.data[name] = BlackBodySpec(name, **d)
+            self.populate_dataset_tree()
+
+            
     def export_current_raw(self, item):
         options =  QFileDialog.Options() 
         #options = QFileDialog.DontUseNativeDialog
