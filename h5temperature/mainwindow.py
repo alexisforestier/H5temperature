@@ -470,9 +470,7 @@ class MainWindow(QWidget):
         self.dataset_tree.clear()
         self.results_table.clearContents()
 
-        self.canvas.clear()
-        self.canvas.draw()
-
+        self.canvas.clear_all()
 
     def eval_fits(self, item):
         # eval all quantities for a given spectrum
@@ -488,10 +486,7 @@ class MainWindow(QWidget):
             QMessageBox.critical(self, 'Error', str(e))
 
     def update(self, item):
-        # If item, otherwise crash
             current = self.get_data_from_tree_item(item)
-
-            #self.canvas.clear()
 
             if current:
                 # if parameters have changed then we fit again
@@ -500,15 +495,12 @@ class MainWindow(QWidget):
                     current.set_pars(self.pars)
                     self.eval_fits(item)
                 
-                self.canvas.set_data(current)
-                self.canvas.set_texts(current)
-                self.canvas.autoscale(current)
-
-                self.canvas.draw_idle()
+                self.canvas.update_all(current)
                 self.update_table(item)
+
             else:
                 # empty if no data e.g. main item of a serie
-                self.canvas.draw_idle()
+                self.canvas.clear_all()
                 self.results_table.clearContents()
 
     def update_table(self, item):

@@ -36,9 +36,16 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.ax_planck_res = self.axes[0,0].twinx()
         self.ax_wien_res = self.axes[0,1].twinx()
 
-        self.create_plots_labels()
-        self.create_plots_artists()
-        self.create_plots_texts()
+        self.create_all()
+
+    def get_NavigationToolbar(self, parent):
+        return NavigationToolbar2QT(self, parent)
+
+    def create_all(self):
+        self.create_labels()
+        self.create_artists()
+        self.create_legends()
+        self.create_texts()
 
         # required to have residuals BEHIND data points :
         self.axes[0,0].set_zorder(2)
@@ -46,10 +53,26 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.axes[0,1].set_zorder(2)
         self.axes[0,1].set_frame_on(False)
 
-    def get_NavigationToolbar(self, parent):
-        return NavigationToolbar2QT(self, parent)
+    def update_all(self, current):
+        self.set_data(current)
+        self.set_texts(current)
+        self.autoscale(current)
 
-    def update_legends(self):
+        self.draw_idle()
+
+    def clear_all(self):
+        self.axes[0,0].clear()
+        self.axes[0,1].clear()
+        self.axes[1,0].clear()
+        self.axes[1,1].clear()
+        self.ax_planck_res.clear()
+        self.ax_wien_res.clear()
+
+        # re-create all 
+        self.create_all()
+        self.draw_idle()
+
+    def create_legends(self):
         # legends
         self.axes[0,0].legend(loc='upper left')
         self.ax_planck_res.legend(loc='upper right')
@@ -58,15 +81,8 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.axes[1,0].legend() 
         self.axes[1,1].legend()
 
-    def clear(self):
-        self.axes[0,0].clear()
-        self.axes[0,1].clear()
-        self.axes[1,0].clear()
-        self.axes[1,1].clear()
-        self.ax_planck_res.clear()
-        self.ax_wien_res.clear()
 
-    def create_plots_labels(self):
+    def create_labels(self):
         # Planck
         self.axes[0,0].set_xlabel('wavelength (nm)')
         self.axes[0,0].set_ylabel('intensity (arb. unit)')
@@ -87,7 +103,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.axes[1,1].set_xlabel('two-color temperature (K)')
         self.axes[1,1].set_ylabel('frequency')
 
-    def create_plots_artists(self):
+    def create_artists(self):
         self.planck_data_pts = self.axes[0,0].scatter([], [], 
                                       edgecolor='k',
                                       facecolor='royalblue',
@@ -156,7 +172,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
                                       zorder=7,
                                       label='mean')            
 
-    def create_plots_texts(self):
+    def create_texts(self):
         self.planck_text = self.axes[0,0].text(0.05, 0.65, 
                             '',
                             size=15, 
@@ -184,6 +200,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
                             color='r', 
                             zorder=10,
                             transform=self.axes[1,1].transAxes)
+
 
     def set_texts(self, current):
 
@@ -276,7 +293,6 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
              current.T_twocolor + 5 * current.T_std_twocolor])
 
         self.axes[1,1].set_ylim([0, 1.4*np.max(self.hist_counts)])
-
 
 
 
