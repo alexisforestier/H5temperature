@@ -25,6 +25,8 @@ from PyQt5.QtWidgets import (QApplication,
                              QTableWidget,
                              QTableWidgetItem,
                              QAbstractItemView,
+                             QMenu,
+                             QAction,
                              QHeaderView,
                              QGroupBox,
                              QPushButton,
@@ -36,6 +38,7 @@ from PyQt5.QtWidgets import (QApplication,
                              QFileDialog,
                              QMessageBox,
                              QSizePolicy)
+from PyQt5.QtCore import Qt
 
 from h5temperature import __version__
 import h5temperature.physics as Ph 
@@ -62,16 +65,20 @@ class MainWindow(QWidget):
                          delta = 100)
 
         # left layout   
-        load_button = QPushButton('Load h5')
+        self.load_button = QPushButton('Load h5')
         reload_button = QPushButton('Reload')
-        loadascii_button = QPushButton('Load ASCII')
+#        loadascii_button = QPushButton('Load ASCII')
         clear_button = QPushButton('Clear')
         exportraw_button = QPushButton('Export current')
 
+        self.load_menu = QMenu(self)
+        self.load_menu.addAction(QAction("Load h5", self))
+        self.load_menu.addAction(QAction("Load ASCII", self))
+
         topleftbuttonslayout = QHBoxLayout()
-        topleftbuttonslayout.addWidget(load_button)
+        topleftbuttonslayout.addWidget(self.load_button)
         topleftbuttonslayout.addWidget(reload_button)
-        topleftbuttonslayout.addWidget(loadascii_button)
+#        topleftbuttonslayout.addWidget(loadascii_button)
         
 
         currentfile_layout = QHBoxLayout()
@@ -198,10 +205,13 @@ class MainWindow(QWidget):
 
         # connects :
         about_button.clicked.connect(self.show_about)
-        load_button.clicked.connect(self.load_h5file)
-        loadascii_button.clicked.connect(self.load_ascii)
+        self.load_button.clicked.connect(self.load_h5file)
+#        loadascii_button.clicked.connect(self.load_ascii)
         reload_button.clicked.connect(self.reload_h5file)
         clear_button.clicked.connect(self.clear_all)
+
+        self.load_button.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.load_button.customContextMenuRequested.connect(self.show_load_menu)
 
         exportraw_button.clicked.connect(
             lambda: self.export_current_raw(self.dataset_tree.currentItem()))
@@ -230,6 +240,12 @@ class MainWindow(QWidget):
             lambda: self.update(self.dataset_tree.currentItem()))
         self.delta_spinbox.editingFinished.connect(
             lambda: self.update(self.dataset_tree.currentItem()))
+
+
+
+    def show_load_menu(self, pos):
+        self.load_menu.exec_(self.load_button.mapToGlobal(pos))
+
 
     def get_data_from_tree_item(self, item):
         if item:
