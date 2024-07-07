@@ -16,6 +16,7 @@
 #   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
 
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -29,6 +30,8 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
         self.fig, self.axes = plt.subplots(2, 2, 
                             constrained_layout=True)
+
+        super(FourPlotsCanvas, self).__init__(self.fig)
 
         # Planck
         self.axes[0,0].set_xlabel('wavelength (nm)')
@@ -50,10 +53,12 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.axes[1,1].set_xlabel('two-color temperature (K)')
         self.axes[1,1].set_ylabel('frequency')
 
-        super(FourPlotsCanvas, self).__init__(self.fig)
+        self.init_plot_artists()
+
 
     def get_NavigationToolbar(self, parent):
         return NavigationToolbar2QT(self, parent)
+
 
     def update_legends(self):
         # legends
@@ -64,6 +69,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.axes[1,0].legend() 
         self.axes[1,1].legend()
 
+
     def clear(self):
         self.axes[0,0].clear()
         self.axes[0,1].clear()
@@ -72,6 +78,102 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.ax_planck_res.clear()
         self.ax_wien_res.clear()
 
+
+    def init_plot_artists(self):
+
+        self.planck_data_pts = self.axes[0,0].scatter([], [], 
+                                      edgecolor='k',
+                                      facecolor='royalblue',
+                                      alpha=.4,
+                                      s=15, 
+                                      zorder=5,
+                                      label='Planck data')
+
+        self.wien_data_pts = self.axes[0,1].scatter([], [], 
+                                      edgecolor='k',
+                                      facecolor='royalblue',
+                                      alpha=.4,
+                                      s=15, 
+                                      zorder=5,
+                                      label='Wien data')
+
+        self.twocolor_data_pts = self.axes[1,0].scatter([], [],
+                                      edgecolor='k',
+                                      facecolor='royalblue',
+                                      alpha=.4,
+                                      s=15, 
+                                      zorder=5,
+                                      label='two-color data')
+
+        _, _, self.hist_patches = self.axes[1,1].hist([],
+                                          color='darkblue',
+                                          bins = 70,
+                                          alpha=.7, 
+                                          zorder=5,
+                                          label='two-color histogram')
+
+
+        # # plot fits:
+        # self.canvas.axes[0,0].plot(current.lam[current.ind_interval],
+        #                            current.planck_fit,
+        #                            color='r',
+        #                            linewidth=2,
+        #                            zorder=7,
+        #                            label='Planck fit')
+
+        # self.canvas.ax_planck_res.scatter(current.lam[current.ind_interval], 
+        #                                   current.planck_residuals, 
+        #                                   edgecolor='gray',
+        #                                   facecolor='none',
+        #                                   linewidth=1.5,
+        #                                   alpha=0.2,
+        #                                   s=15, 
+        #                                   zorder=0,
+        #                                   label='residuals')
+
+        # self.canvas.axes[0,1].plot(1 / current.lam[current.ind_interval], 
+        #                            current.wien_fit, 
+        #                            c='r', 
+        #                            linewidth=2, 
+        #                            zorder=7,
+        #                            label='Wien fit')
+
+        # self.canvas.axes[1,0].axhline(np.mean(current.twocolor), 
+        #                               color='r',
+        #                               linestyle='dashed',
+        #                               zorder=7,
+        #                               label='mean')            
+        
+        # self.canvas.ax_wien_res.scatter(1 / current.lam[current.ind_interval], 
+        #                                 current.wien_residuals, 
+        #                                 edgecolor='gray',
+        #                                 facecolor='none',
+        #                                 linewidth=1.5,
+        #                                 alpha=0.2,
+        #                                 s=15, 
+        #                                 zorder=0,
+        #                                 label='residuals')
+
+    def set_data(self, current):
+
+        self.planck_data_pts.set_offsets(np.c_[current.lam, current.planck])
+
+        self.wien_data_pts.set_offsets(np.c_[1 / current.lam, current.wien])
+
+        self.twocolor_data_pts.set_offsets(
+            np.c_[current.lam[current.ind_interval][:-current.pars['delta']], 
+            current.twocolor])
+
+        counts, bins = np.histogram(current.twocolor, bins=70)
+        dbins = bins[1] - bins[0]
+
+        for rect, h in zip(self.hist_patches, counts):
+            rect.set_height(h)
+        for rect, x in zip(self.hist_patches, bins[:-1]):
+            rect.set_x(x)
+            rect.set_width(bins[1]-bins[0])
+
+        self.axes[1,1].set_ylim([0, 1.4*np.max(counts)])
 
 
 

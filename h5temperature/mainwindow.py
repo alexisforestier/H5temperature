@@ -491,7 +491,7 @@ class MainWindow(QWidget):
         # If item, otherwise crash
             current = self.get_data_from_tree_item(item)
 
-            self.canvas.clear()
+            #self.canvas.clear()
 
             if current:
                 # if parameters have changed then we fit again
@@ -500,12 +500,12 @@ class MainWindow(QWidget):
                     current.set_pars(self.pars)
                     self.eval_fits(item)
                 
-                self.plot_data(item)
+                self.canvas.set_data(current)
                 self.plot_fits(item)
                 self.update_table(item)
             else:
                 # empty if no data e.g. main item of a serie
-                self.canvas.draw()
+                self.canvas.draw_idle()
                 self.results_table.clearContents()
 
     def update_table(self, item):
@@ -525,48 +525,28 @@ class MainWindow(QWidget):
         self.results_table.setItem(0, 5, 
                     QTableWidgetItem(str(round(current.eps_wien,3))))
 
-    def plot_data(self, item):
-        # plot data
-        current = self.get_data_from_tree_item(item)
 
-        self.canvas.axes[0,0].scatter(current.lam, 
-                                      current.planck, 
-                                      edgecolor='k',
-                                      facecolor='royalblue',
-                                      alpha=.4,
-                                      s=15, 
-                                      zorder=5,
-                                      label='Planck data')
-
-        self.canvas.axes[0,1].scatter(1 / current.lam, 
-                                      current.wien, 
-                                      edgecolor='k',
-                                      facecolor='royalblue',
-                                      alpha=.4,
-                                      s=15, 
-                                      zorder=5,
-                                      label='Wien data')
 
     def plot_fits(self, item):
 
         current = self.get_data_from_tree_item(item)
 
-        self.canvas.axes[1,0].scatter(
-            current.lam[current.ind_interval][:-current.pars['delta']], 
-            current.twocolor, 
-            edgecolor='k',
-            facecolor='royalblue',
-            alpha=.4,
-            s=15, 
-            zorder=5,
-            label='two-color data')
+        # self.canvas.axes[1,0].scatter(
+        #     current.lam[current.ind_interval][:-current.pars['delta']], 
+        #     current.twocolor, 
+        #     edgecolor='k',
+        #     facecolor='royalblue',
+        #     alpha=.4,
+        #     s=15, 
+        #     zorder=5,
+        #     label='two-color data')
 
-        h_y, h_x, _ = self.canvas.axes[1,1].hist(current.twocolor, 
-                                   color='darkblue',
-                                   bins = 70,
-                                   alpha=.7, 
-                                   zorder=5,
-                                   label='two-color histogram')
+        # h_y, h_x, _ = self.canvas.axes[1,1].hist(current.twocolor, 
+        #                            color='darkblue',
+        #                            bins = 70,
+        #                            alpha=.7, 
+        #                            zorder=5,
+        #                            label='two-color histogram')
 
         # plot fits:
         self.canvas.axes[0,0].plot(current.lam[current.ind_interval],
@@ -685,7 +665,7 @@ class MainWindow(QWidget):
         self.canvas.axes[1,1].set_xlim(
             [current.T_twocolor - 5 * current.T_std_twocolor,
              current.T_twocolor + 5 * current.T_std_twocolor])
-        self.canvas.axes[1,1].set_ylim([0, np.max(h_y) + .4*np.max(h_y)])
+        
 
         self.canvas.update_legends()
 
