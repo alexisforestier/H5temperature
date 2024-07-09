@@ -364,4 +364,9 @@ class ChooseDeltaWindow(QWidget):
         
         self.delta_changed.emit(x)
         self.canvas.draw_idle()
-        
+
+    def clear_canvas(self):
+        self.canvas.ax.clear()
+        self.create_labels()
+        self.create_artists()
+        self.canvas.draw_idle()

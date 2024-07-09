@@ -206,30 +206,24 @@ class MainWindow(QWidget):
 
 
         # connects :
-        self.choosedelta_win.delta_changed.connect(self.update_delta)
-
 
         about_button.clicked.connect(self.show_about)
         self.load_button.clicked.connect(self.load_h5file)
-#        loadascii_button.clicked.connect(self.load_ascii)
         reload_button.clicked.connect(self.reload_h5file)
         clear_button.clicked.connect(self.clear_all)
 
         self.load_button.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.load_button.customContextMenuRequested.connect(self.show_load_menu)
+        self.load_button.customContextMenuRequested.connect(
+            self.show_load_menu)
 
-        exportraw_button.clicked.connect(
-            lambda: self.export_current_raw(self.dataset_tree.currentItem()))
+        exportraw_button.clicked.connect(self.export_current_raw)
 
-        choosedelta_button.clicked.connect(
-            lambda: self.choose_delta(self.dataset_tree.currentItem()))
+        choosedelta_button.clicked.connect(self.choose_delta)
+        self.choosedelta_win.delta_changed.connect(self.update_delta)
 
-#        self.dataset_tree.currentItemChanged.connect(
-#            lambda: self.update(self.dataset_tree.currentItem().text(0)))
         self.dataset_tree.currentItemChanged.connect(self.update)
 
-        fit_button.clicked.connect(
-            lambda: self.update(self.dataset_tree.currentItem()))
+        fit_button.clicked.connect(self.update)
 
         # on change in parameters widgets it is updated in self.pars
         lowerbound_spinbox.valueChanged.connect(
@@ -239,15 +233,12 @@ class MainWindow(QWidget):
         self.delta_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('delta', x))
 
-        lowerbound_spinbox.editingFinished.connect(
-            lambda: self.update(self.dataset_tree.currentItem()))
-        upperbound_spinbox.editingFinished.connect(
-            lambda: self.update(self.dataset_tree.currentItem()))
-        self.delta_spinbox.editingFinished.connect(
-            lambda: self.update(self.dataset_tree.currentItem()))
+        lowerbound_spinbox.editingFinished.connect(self.update)
+        upperbound_spinbox.editingFinished.connect(self.update)
+        self.delta_spinbox.editingFinished.connect(self.update)
 
 
-
+    @pyqtSlot()
     def show_load_menu(self, pos):
         self.load_menu.exec_(self.load_button.mapToGlobal(pos))
 
@@ -321,7 +312,7 @@ class MainWindow(QWidget):
                     #test = QTreeWidgetItem(item_n, ["test1","test2"])
                     #self.dataset_tree.addTopLevelItem(QTreeWidgetItem([n]))
 
-
+    @pyqtSlot()
     def show_about(self):
         text = '<center>' \
                '<h1> h5temperature </h1>' \
@@ -355,7 +346,7 @@ class MainWindow(QWidget):
         msg.setStyleSheet("background-color: white;")
         msg.exec_()
 
-
+    @pyqtSlot()
     def load_h5file(self):
         options = QFileDialog.Options()
         # ! use Native dialog or qt dialog... 
@@ -371,11 +362,13 @@ class MainWindow(QWidget):
             self.populate_dataset_tree()
             self.currentfilename_label.setText(self.filepath.split('/')[-1])
 
+    @pyqtSlot()
     def reload_h5file(self):
         if self.filepath:
             self.get_h5file_content()
             self.populate_dataset_tree()
 
+    @pyqtSlot()
     def load_ascii(self):
         options = QFileDialog.Options()
         # ! use Native dialog or qt dialog... 
@@ -395,79 +388,79 @@ class MainWindow(QWidget):
             self.data[name] = BlackBodySpec(name, **d)
             self.populate_dataset_tree()
 
-            
-    def export_current_raw(self, item):
-        options =  QFileDialog.Options() 
-        #options = QFileDialog.DontUseNativeDialog
-        # ! Must be checked on different platforms !
-        filename, filetype = \
-            QFileDialog.getSaveFileName(self,
-                                        "h5temperature: Export to ASCII", 
-                                        "",
-                                        "Text File (*.txt);;All Files (*)", 
-                                        options=options)
+    @pyqtSlot()            
+    def export_current_raw(self):
+        item = self.dataset_tree.currentItem()
+        current = self.get_data_from_tree_item(item)
 
-        if filename:
-            if filetype == 'Text File (*.txt)':
-                if '.txt' in filename:
-                    pass
-                else:
-                    filename += '.txt'
+        if current:
+            options =  QFileDialog.Options() 
+            #options = QFileDialog.DontUseNativeDialog
+            # ! Must be checked on different platforms !
+            filename, filetype = \
+                QFileDialog.getSaveFileName(self,
+                                            "h5temperature: Export to ASCII", 
+                                            "",
+                                            "Text File (*.txt);;All Files (*)", 
+                                            options=options)
     
-            current = self.get_data_from_tree_item(item)
-
-            # create empty array of len(lam) to be saved in txt
-            twocolor_ = np.empty( len(current.lam) )
-            # fill with NaN
-            twocolor_.fill(np.nan) 
-
-            nans = np.empty(current.pars['delta'])
-            nans.fill(np.nan)
-
-            dat1 = np.concatenate([current.twocolor, nans])
-            # populate twocolor_ only where data should be, the rest is nan
-            twocolor_[current.ind_interval] = dat1
-
-            data_ = np.column_stack((current.lam,
-                                     current.planck,
-                                     current.wien,
-                                     twocolor_))
-            np.savetxt(filename, 
-                       data_, 
-                       delimiter='\t', 
-                       comments='',
-                       header='lambda\tPlanck\tWien\ttwocolor')
+            if filename:
+                if filetype == 'Text File (*.txt)':
+                    if '.txt' in filename:
+                        pass
+                    else:
+                        filename += '.txt'
+                        
+                # create empty array of len(lam) to be saved in txt
+                twocolor_ = np.empty( len(current.lam) )
+                # fill with NaN
+                twocolor_.fill(np.nan) 
+    
+                nans = np.empty(current.pars['delta'])
+                nans.fill(np.nan)
+    
+                dat1 = np.concatenate([current.twocolor, nans])
+                # populate twocolor_ only where data should be, the rest is nan
+                twocolor_[current.ind_interval] = dat1
+    
+                data_ = np.column_stack((current.lam,
+                                         current.planck,
+                                         current.wien,
+                                         twocolor_))
+                np.savetxt(filename, 
+                           data_, 
+                           delimiter='\t', 
+                           comments='',
+                           header='lambda\tPlanck\tWien\ttwocolor')
 
 
     @pyqtSlot(int)
     def update_delta(self, x):
-        print(x)
+        self.delta_spinbox.setValue(x)
+        self.update()
 
-    def choose_delta(self, item):
-
+    @pyqtSlot()
+    def choose_delta(self):
+        item = self.dataset_tree.currentItem()
         current = self.get_data_from_tree_item(item)
 
-        # calculate stdev vs. delta: could be done somewhere else?
-        alldeltas = np.array(range(1,300))
-        allstddevs = np.array( [np.std(Ph.temp2color(
-                                current.lam[current.ind_interval], 
-                                current.wien[current.ind_interval], 
-                                di)) for di in alldeltas ] )
+        if current:
+            # calculate stdev vs. delta: could be done somewhere else?
+            alldeltas = np.array(range(1,300))
+            allstddevs = np.array( [np.std(Ph.temp2color(
+                                    current.lam[current.ind_interval], 
+                                    current.wien[current.ind_interval], 
+                                    di)) for di in alldeltas ] )
+    
+            self.choosedelta_win.set_data(alldeltas, allstddevs)
+            self.choosedelta_win.set_vline(current.pars['delta'])
+    
+            self.choosedelta_win.canvas.draw_idle()
+    
+            if not self.choosedelta_win.isVisible():
+                self.choosedelta_win.show()
 
-        self.choosedelta_win.set_data(alldeltas, allstddevs)
-        self.choosedelta_win.set_vline(current.pars['delta'])
-
-       # self.delta_spinbox.setValue(x)
-        # # necessary as editingFinished does not send signal here
-        # self.update(item)
-
-
-        self.choosedelta_win.canvas.draw_idle()
-
-        if not self.choosedelta_win.isVisible():
-            self.choosedelta_win.show()
-
-
+    @pyqtSlot()
     def clear_all(self):
         self.filepath = str()
         self.currentfilename_label.setText('')
@@ -476,9 +469,11 @@ class MainWindow(QWidget):
         self.results_table.clearContents()
 
         self.canvas.clear_all()
+        self.choosedelta_win.clear_canvas()
 
-    def eval_fits(self, item):
+    def eval_fits(self):
         # eval all quantities for a given spectrum
+        item = self.dataset_tree.currentItem()
         current = self.get_data_from_tree_item(item)
         try:
             # start with wien to get a reasonable initial value for planck:
@@ -490,7 +485,9 @@ class MainWindow(QWidget):
         except Exception as e:
             QMessageBox.critical(self, 'Error', str(e))
 
-    def update(self, item):
+    @pyqtSlot()
+    def update(self):
+            item = self.dataset_tree.currentItem()
             current = self.get_data_from_tree_item(item)
 
             if current:
@@ -498,18 +495,23 @@ class MainWindow(QWidget):
                 # if current was never fitted current.pars is None 
                 if not current.pars == self.pars:
                     current.set_pars(self.pars)
-                    self.eval_fits(item)
+                    self.eval_fits()
                 
                 self.canvas.update_all(current)
-                self.update_table(item)
+                self.update_table()
 
+                # this should update the choose delta window if it stays open!
+                # but lead to call again choose_delta after delta update... 
+                # not really great
+#                if self.choosedelta_win.isVisible():
+#                    self.choose_delta()
             else:
                 # empty if no data e.g. main item of a serie
                 self.canvas.clear_all()
                 self.results_table.clearContents()
 
-    def update_table(self, item):
-
+    def update_table(self):
+        item = self.dataset_tree.currentItem()
         current = self.get_data_from_tree_item(item)
 
         self.results_table.setItem(0, 0, 
