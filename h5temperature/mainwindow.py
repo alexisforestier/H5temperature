@@ -38,7 +38,7 @@ from PyQt5.QtWidgets import (QApplication,
                              QFileDialog,
                              QMessageBox,
                              QSizePolicy)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSlot
 
 from h5temperature import __version__
 import h5temperature.physics as Ph 
@@ -53,7 +53,7 @@ class MainWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle('h5temperature {}'.format(__version__))
-        self.resize(1400,800)
+        self.resize(1600,900)
 
         # data stored in MainWindow
         self.filepath = str()
@@ -178,7 +178,7 @@ class MainWindow(QWidget):
         # set empty plots
         self.canvas = FourPlotsCanvas(self)
         self.toolbar = self.canvas.get_NavigationToolbar(self)
-        self.toolbar.setStyleSheet("font-size: 18px;")
+
         plot_layout.addWidget(self.toolbar)
         plot_layout.addWidget(self.canvas)
 
@@ -203,7 +203,12 @@ class MainWindow(QWidget):
         
         self.setLayout(layout)
 
+
+
         # connects :
+        self.choosedelta_win.delta_changed.connect(self.update_delta)
+
+
         about_button.clicked.connect(self.show_about)
         self.load_button.clicked.connect(self.load_h5file)
 #        loadascii_button.clicked.connect(self.load_ascii)
@@ -434,49 +439,33 @@ class MainWindow(QWidget):
                        header='lambda\tPlanck\tWien\ttwocolor')
 
 
+    @pyqtSlot(int)
+    def update_delta(self, x):
+        print(x)
+
     def choose_delta(self, item):
 
         current = self.get_data_from_tree_item(item)
 
-        # clear previous :
-        self.choosedelta_win.canvas.ax.clear()
-
-        alldeltas = np.array(range(300))
+        # calculate stdev vs. delta: could be done somewhere else?
+        alldeltas = np.array(range(1,300))
         allstddevs = np.array( [np.std(Ph.temp2color(
                                 current.lam[current.ind_interval], 
                                 current.wien[current.ind_interval], 
                                 di)) for di in alldeltas ] )
 
-        self.choosedelta_win.canvas.ax.scatter(alldeltas, 
-                                               allstddevs,
-                                               marker='X',
-                                               edgecolor='k',
-                                               color='royalblue',
-                                               alpha=0.5,
-                                               s=30)
+        self.choosedelta_win.set_data(alldeltas, allstddevs)
+        self.choosedelta_win.set_vline(current.pars['delta'])
 
-        vline = self.choosedelta_win.canvas.ax.axvline(current.pars['delta'],
-                                               color='k',
-                                               linestyle='dashed',
-                                               linewidth=1)
+       # self.delta_spinbox.setValue(x)
+        # # necessary as editingFinished does not send signal here
+        # self.update(item)
 
-        self.choosedelta_win.canvas.ax.set_ylim([0,3e3])
 
-        self.choosedelta_win.canvas.draw()
-        self.choosedelta_win.show()
+        self.choosedelta_win.canvas.draw_idle()
 
-        def get_xclick(event):
-            x = int(event.xdata)
-            self.delta_spinbox.setValue(x)
-            vline.set_xdata([x])
-            self.choosedelta_win.canvas.draw()
-            
-            # necessary as editingFinished does not send signal here
-            self.update(item)
-            
-        # click event
-        self.choosedelta_win.canvas.mpl_connect('button_press_event', 
-                            get_xclick)
+        if not self.choosedelta_win.isVisible():
+            self.choosedelta_win.show()
 
 
     def clear_all(self):

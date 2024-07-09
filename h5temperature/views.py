@@ -23,6 +23,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from PyQt5.QtWidgets import (QWidget,
                              QVBoxLayout,
                              QHBoxLayout)
+from PyQt5.QtCore import pyqtSignal
 
 
 class FourPlotsCanvas(FigureCanvasQTAgg):
@@ -39,8 +40,10 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.create_all()
 
     def get_NavigationToolbar(self, parent):
-        return NavigationToolbar2QT(self, parent)
-
+        self.navigation_toolbar = NavigationToolbar2QT(self, parent)
+        self.navigation_toolbar.setStyleSheet("font-size: 18px;")
+        return self.navigation_toolbar
+        
     def create_all(self):
         self.create_labels()
         self.create_artists()
@@ -80,7 +83,6 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.ax_wien_res.legend(loc='upper right')
         self.axes[1,0].legend() 
         self.axes[1,1].legend()
-
 
     def create_labels(self):
         # Planck
@@ -201,7 +203,6 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
                             zorder=10,
                             transform=self.axes[1,1].transAxes)
 
-
     def set_texts(self, current):
 
         self.planck_text.set_text(
@@ -250,7 +251,6 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
         self.twocolor_line.set_ydata([current.T_twocolor,current.T_twocolor])
 
-
     def autoscale(self, current):
         # Custom Autoscales...
         # planck:
@@ -296,18 +296,19 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
 
 
-class ChooseDeltaPlotCanvas(FigureCanvasQTAgg):
+class SinglePlotCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
         self.fig, self.ax = plt.subplots(
             constrained_layout=True)
 
-        self.ax.set_xlabel('delta (px)')
-        self.ax.set_ylabel('two-color temperature std deviation (K)')
+        super(SinglePlotCanvas, self).__init__(self.fig)
 
-        super(ChooseDeltaPlotCanvas, self).__init__(self.fig)
 
 
 class ChooseDeltaWindow(QWidget):
+
+    delta_changed = pyqtSignal(int)
+
     def __init__(self):
         super().__init__()
 
@@ -315,7 +316,7 @@ class ChooseDeltaWindow(QWidget):
 
         self.setWindowTitle('Choose delta...')
 
-        self.canvas = ChooseDeltaPlotCanvas(self)
+        self.canvas = SinglePlotCanvas(self)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)     
         self.toolbar.setStyleSheet("font-size: 18px;")
 
@@ -324,3 +325,43 @@ class ChooseDeltaWindow(QWidget):
         layout.addWidget(self.canvas)
 
         self.setLayout(layout)
+
+        self.create_labels()
+        self.create_artists()
+
+        # click event
+        self.canvas.mpl_connect('button_press_event', self.choose)
+
+
+    def create_labels(self):
+        self.canvas.ax.set_xlabel('delta (px)')
+        self.canvas.ax.set_ylabel('two-color temperature std deviation (K)')
+
+        # fixed limits
+        self.canvas.ax.set_xlim([0,300])
+        self.canvas.ax.set_ylim([0,3e3])
+
+    def create_artists(self):
+        self.choosedelta_pts = self.canvas.ax.scatter([], [],
+                                               marker='X',
+                                               edgecolor='k',
+                                               color='royalblue',
+                                               alpha=0.5,
+                                               s=30)
+        self.choosedelta_line = self.canvas.ax.axvline(color='k',
+                                               linestyle='dashed',
+                                               linewidth=1)
+
+    def set_data(self, x, y):
+        self.choosedelta_pts.set_offsets(np.c_[x, y])
+
+    def set_vline(self, x):
+        self.choosedelta_line.set_xdata([x])
+
+    def choose(self, event):
+        x = int(event.xdata)
+        self.set_vline(x)
+        
+        self.delta_changed.emit(x)
+        self.canvas.draw_idle()
+        
