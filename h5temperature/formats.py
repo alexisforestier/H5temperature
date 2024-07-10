@@ -24,14 +24,12 @@ def get_data_from_h5group(group):
     t1 = str(np.array(group['end_time'])[()])
     
     try:
-        time = datetime.datetime.strptime(t1, 
-                    "b'%Y-%m-%dT%H:%M:%S.%f%z'")
+        time = datetime.datetime.strptime(t1, "b'%Y-%m-%dT%H:%M:%S.%f%z'")
     except:
         # fix for <python3.7, colon not supported in timezone (%z)
         if t1[-4] == ':':
             t1 = t1[:-4] + t1[-3:] # remove ":"
-            time = datetime.datetime.strptime(t1, 
-                        "b'%Y-%m-%dT%H:%M:%S.%f%z'")
+            time = datetime.datetime.strptime(t1, "b'%Y-%m-%dT%H:%M:%S.%f%z'")
         else:
             time = None
 

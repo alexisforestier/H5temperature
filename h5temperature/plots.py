@@ -29,8 +29,7 @@ from PyQt5.QtCore import pyqtSignal
 class FourPlotsCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
 
-        self.fig, self.axes = plt.subplots(2, 2, 
-                            constrained_layout=True)
+        self.fig, self.axes = plt.subplots(2, 2, constrained_layout=True)
 
         super().__init__(self.fig)
 
@@ -206,13 +205,13 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
     def set_texts(self, current):
 
         self.planck_text.set_text(
-                'T$_{{Planck}}$= {:.0f} K'.format(current.T_planck))
+                    'T$_{{Planck}}$= {:.0f} K'.format(current.T_planck))
         self.wien_text.set_text(
-                'T$_{{Wien}}$= {:.0f} K'.format(current.T_wien))
+                    'T$_{{Wien}}$= {:.0f} K'.format(current.T_wien))
         self.twocolor_text.set_text(
-                'T$_{{two-color}}$= {:.0f} K'.format(current.T_twocolor))
+                    'T$_{{two-color}}$= {:.0f} K'.format(current.T_twocolor))
         self.twocolor_err_text.set_text(
-                'std. dev = {:.0f} K'.format(current.T_std_twocolor))
+                    'std. dev = {:.0f} K'.format(current.T_std_twocolor))
 
     def set_data(self, current):
 
@@ -222,16 +221,16 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
         self.twocolor_data_pts.set_offsets(
             np.c_[current.lam[current.ind_interval][:-current.pars['delta']], 
-            current.twocolor])
+                  current.twocolor])
 
         # could be calculated in the model instead of here
-        (self.hist_counts, 
-            self.hist_bins) = np.histogram(current.twocolor, bins=70)
+        self.hist_counts, self.hist_bins = np.histogram(current.twocolor, bins=70)
         # equal-width bins
         dbins = (self.hist_bins[1] - self.hist_bins[0])
 
-        for rect, h, x in zip(self.hist_patches, self.hist_counts, 
-                                    self.hist_bins[:-1]):
+        for rect, h, x in zip(self.hist_patches, 
+                              self.hist_counts, 
+                              self.hist_bins[:-1]):
             rect.set_height(h)
             rect.set_x(x)
             rect.set_width(dbins)
@@ -239,28 +238,27 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.planck_fit_line.set_data(current.lam[current.ind_interval],
                                       current.planck_fit)
 
-        self.planck_res_pts.set_offsets(
-            np.c_[current.lam[current.ind_interval], current.planck_residuals])
+        self.planck_res_pts.set_offsets(np.c_[current.lam[current.ind_interval], 
+                                              current.planck_residuals])
 
         self.wien_fit_line.set_data(1 / current.lam[current.ind_interval], 
-                                   current.wien_fit)
+                                    current.wien_fit)
 
-        self.wien_res_pts.set_offsets(
-            np.c_[1 / current.lam[current.ind_interval], 
-                current.wien_residuals])
+        self.wien_res_pts.set_offsets(np.c_[1 / current.lam[current.ind_interval], 
+                                            current.wien_residuals])
 
-        self.twocolor_line.set_ydata([current.T_twocolor,current.T_twocolor])
+        self.twocolor_line.set_ydata([current.T_twocolor, current.T_twocolor])
 
     def autoscale(self, current):
         # Custom Autoscales...
         # planck:
         self.axes[0,0].set_xlim([current.pars['lowerb'] - 100, 
-                                        current.pars['upperb'] + 100]) 
+                                 current.pars['upperb'] + 100]) 
 
         self.axes[0,0].set_ylim([np.min( current.planck_fit - \
-                                            0.4*np.ptp(current.planck_fit)),
-                                        np.max( current.planck_fit + \
-                                            0.5*np.ptp(current.planck_fit))])
+                                         0.4*np.ptp(current.planck_fit)),
+                                         np.max( current.planck_fit + \
+                                         0.5*np.ptp(current.planck_fit))])
 
         self.ax_planck_res.set_ylim([
             np.min( current.planck_residuals ),
@@ -272,9 +270,9 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
              np.max( 1 / current.lam[current.ind_interval] + 0.0002 )])
 
         self.axes[0,1].set_ylim([np.min( current.wien_fit - \
-                                            0.5*np.ptp(current.wien_fit)),
-                                        np.max( current.wien_fit + \
-                                            0.5*np.ptp(current.wien_fit))])
+                                         0.5*np.ptp(current.wien_fit)),
+                                         np.max( current.wien_fit + \
+                                         0.5*np.ptp(current.wien_fit))])
 
         self.ax_wien_res.set_ylim([
             np.min( current.wien_residuals ),
@@ -282,7 +280,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
         # 2color:
         self.axes[1,0].set_xlim([current.pars['lowerb'] - 20,
-                                        current.pars['upperb'] + 10])
+                                 current.pars['upperb'] + 10])
         self.axes[1,0].set_ylim(
             [current.T_twocolor - 5 * current.T_std_twocolor, 
              current.T_twocolor + 5 * current.T_std_twocolor])
@@ -293,7 +291,6 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
              current.T_twocolor + 5 * current.T_std_twocolor])
 
         self.axes[1,1].set_ylim([0, 1.4*np.max(self.hist_counts)])
-
 
 
 class SinglePlotCanvas(FigureCanvasQTAgg):
@@ -315,7 +312,8 @@ class ChooseDeltaWindow(QWidget):
         self.resize(500,400)
 
         self.setWindowTitle('Choose delta...')
-
+        self.setStyleSheet("background-color: white")
+        
         self.canvas = SinglePlotCanvas(self)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)     
         self.toolbar.setStyleSheet("font-size: 18px;")

@@ -73,10 +73,9 @@ class BlackBodySpec():
 
     def eval_twocolor(self):
         # calculate 2color 
-        self.twocolor = Ph.temp2color(
-                        self.lam[self.ind_interval], 
-                        self.wien[self.ind_interval], 
-                        self.pars['delta'])
+        self.twocolor = Ph.temp2color(self.lam[self.ind_interval], 
+                                      self.wien[self.ind_interval], 
+                                      self.pars['delta'])
 
         self.T_twocolor = np.mean(self.twocolor)
         self.T_std_twocolor = np.std(self.twocolor)

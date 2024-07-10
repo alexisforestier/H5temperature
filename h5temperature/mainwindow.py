@@ -17,7 +17,7 @@
 
 import numpy as np
 import h5py
-from PyQt5.QtWidgets import (QApplication, 
+from PyQt5.QtWidgets import (QApplication,
                              QWidget,
                              QLabel,
                              QSpinBox,
@@ -33,7 +33,8 @@ from PyQt5.QtWidgets import (QApplication,
                              QHBoxLayout,
                              QFileDialog,
                              QMessageBox)
-from PyQt5.QtCore import Qt, pyqtSlot
+
+from PyQt5.QtCore import Qt, pyqtSlot, QPoint
 
 from h5temperature import __version__
 import h5temperature.physics as Ph 
@@ -48,7 +49,7 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('h5temperature {}'.format(__version__))
+        self.setWindowTitle(f'h5temperature {__version__}')
         self.resize(1600,900)
 
         # data stored in MainWindow
@@ -62,10 +63,9 @@ class MainWindow(QWidget):
 
         # left layout   
         self.load_button = QPushButton('Load h5')
-        reload_button = QPushButton('Reload')
-#        loadascii_button = QPushButton('Load ASCII')
-        clear_button = QPushButton('Clear')
-        exportraw_button = QPushButton('Export current')
+        self.reload_button = QPushButton('Reload')
+        self.clear_button = QPushButton('Clear')
+        self.exportraw_button = QPushButton('Export current')
 
         self.load_menu = QMenu(self)
         self.load_menu.addAction(QAction("Load h5", self))
@@ -73,10 +73,8 @@ class MainWindow(QWidget):
 
         topleftbuttonslayout = QHBoxLayout()
         topleftbuttonslayout.addWidget(self.load_button)
-        topleftbuttonslayout.addWidget(reload_button)
-#        topleftbuttonslayout.addWidget(loadascii_button)
+        topleftbuttonslayout.addWidget(self.reload_button)
         
-
         currentfile_layout = QHBoxLayout()
         currentfile_label = QLabel('Current file:')
         self.currentfilename_label = QLabel('')
@@ -95,8 +93,8 @@ class MainWindow(QWidget):
         leftlayout.addLayout(topleftbuttonslayout)
         leftlayout.addLayout(currentfile_layout)
         leftlayout.addWidget(self.dataset_tree)
-        leftlayout.addWidget(clear_button)
-        leftlayout.addWidget(exportraw_button)
+        leftlayout.addWidget(self.clear_button)
+        leftlayout.addWidget(self.exportraw_button)
 
         left_groupbox = QGroupBox('Data')
         left_groupbox.setLayout(leftlayout)
@@ -104,37 +102,36 @@ class MainWindow(QWidget):
         left_groupbox.setMinimumWidth(250)
 
         # right layout
-        lowerbound_spinbox = QSpinBox()
-        upperbound_spinbox = QSpinBox()
+        self.lowerbound_spinbox = QSpinBox()
+        self.upperbound_spinbox = QSpinBox()
         self.delta_spinbox = QSpinBox()
 
-        lowerbound_spinbox.setMinimum(1)
-        upperbound_spinbox.setMinimum(1)
+        self.lowerbound_spinbox.setMinimum(1)
+        self.upperbound_spinbox.setMinimum(1)
         self.delta_spinbox.setMinimum(1)
-        lowerbound_spinbox.setMaximum(9999)
-        upperbound_spinbox.setMaximum(9999)
+        self.lowerbound_spinbox.setMaximum(9999)
+        self.upperbound_spinbox.setMaximum(9999)
         self.delta_spinbox.setMaximum(9999)
         
         # set default values in Widgets:
-        lowerbound_spinbox.setValue(self.pars.get('lowerb'))
-        upperbound_spinbox.setValue(self.pars.get('upperb'))
+        self.lowerbound_spinbox.setValue(self.pars.get('lowerb'))
+        self.upperbound_spinbox.setValue(self.pars.get('upperb'))
         self.delta_spinbox.setValue(self.pars.get('delta'))
 
-        choosedelta_button = QPushButton('Choose delta')
-        fit_button = QPushButton('Fit')
+        self.choosedelta_button = QPushButton('Choose delta')
+        self.fit_button = QPushButton('Fit')
 
         fitparam_form = QFormLayout()
-        fitparam_form.addRow('Lower limit (nm):', lowerbound_spinbox)
-        fitparam_form.addRow('Upper limit (nm):', upperbound_spinbox)
+        fitparam_form.addRow('Lower limit (nm):', self.lowerbound_spinbox)
+        fitparam_form.addRow('Upper limit (nm):', self.upperbound_spinbox)
         fitparam_form.addRow('2-color delta (px):', self.delta_spinbox)
         
         self.results_table = SingleFitResultsTable()
 
-
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
-        fit_layout.addWidget(choosedelta_button)
-        fit_layout.addWidget(fit_button)
+        fit_layout.addWidget(self.choosedelta_button)
+        fit_layout.addWidget(self.fit_button)
         fit_layout.addWidget(self.results_table)
         fit_layout.addStretch()
 
@@ -145,7 +142,7 @@ class MainWindow(QWidget):
         # center layout
         center_groupbox = QGroupBox()
         center_groupbox.setStyleSheet('QGroupBox  {border: 2px solid gray;\
-                                                  background-color: white;}')
+                                                   background-color: white;}')
         plot_layout = QVBoxLayout()
 
         # set empty plots
@@ -159,13 +156,12 @@ class MainWindow(QWidget):
 
         # setup choosedelta window
         self.choosedelta_win = ChooseDeltaWindow()
-        self.choosedelta_win.setStyleSheet("background-color: white")
 
         # about button
-        about_button = QPushButton('About')
+        self.about_button = QPushButton('About')
         right_groupbox_about = QVBoxLayout()
         right_groupbox_about.addWidget(right_groupbox)
-        right_groupbox_about.addWidget(about_button)
+        right_groupbox_about.addWidget(self.about_button)
 
         layout = QHBoxLayout()
         layout.addWidget(left_groupbox, stretch=3)
@@ -176,42 +172,39 @@ class MainWindow(QWidget):
         
         self.setLayout(layout)
 
-
-
         # connects :
 
-        about_button.clicked.connect(self.show_about)
+        self.about_button.clicked.connect(self.show_about)
         self.load_button.clicked.connect(self.load_h5file)
-        reload_button.clicked.connect(self.reload_h5file)
-        clear_button.clicked.connect(self.clear_all)
-
-        self.load_button.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.load_button.customContextMenuRequested.connect(
-            self.show_load_menu)
-
-        exportraw_button.clicked.connect(self.export_current_raw)
-
-        choosedelta_button.clicked.connect(self.choose_delta)
-        self.choosedelta_win.delta_changed.connect(self.update_delta)
+        self.reload_button.clicked.connect(self.reload_h5file)
+        self.clear_button.clicked.connect(self.clear_all)
 
         self.dataset_tree.currentItemChanged.connect(self.update)
+        self.fit_button.clicked.connect(self.update)
 
-        fit_button.clicked.connect(self.update)
+        self.load_button.setContextMenuPolicy(Qt.CustomContextMenu)       
+        self.load_button.customContextMenuRequested.connect(self.show_load_menu)
+
+        self.exportraw_button.clicked.connect(self.export_current_raw)
+
+        self.choosedelta_button.clicked.connect(self.choose_delta)
+        self.choosedelta_win.delta_changed.connect(self.update_delta)
+
 
         # on change in parameters widgets it is updated in self.pars
-        lowerbound_spinbox.valueChanged.connect(
+        self.lowerbound_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('lowerb', x))
-        upperbound_spinbox.valueChanged.connect(
+        self.upperbound_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('upperb', x))
         self.delta_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('delta', x))
 
-        lowerbound_spinbox.editingFinished.connect(self.update)
-        upperbound_spinbox.editingFinished.connect(self.update)
+        self.lowerbound_spinbox.editingFinished.connect(self.update)
+        self.upperbound_spinbox.editingFinished.connect(self.update)
         self.delta_spinbox.editingFinished.connect(self.update)
 
 
-    @pyqtSlot()
+    @pyqtSlot(QPoint)
     def show_load_menu(self, pos):
         self.load_menu.exec_(self.load_button.mapToGlobal(pos))
 
@@ -285,39 +278,7 @@ class MainWindow(QWidget):
                     #test = QTreeWidgetItem(item_n, ["test1","test2"])
                     #self.dataset_tree.addTopLevelItem(QTreeWidgetItem([n]))
 
-    @pyqtSlot()
-    def show_about(self):
-        text = '<center>' \
-               '<h1> h5temperature </h1>' \
-               '<h2> version {}</h2>'.format(__version__) + '<br>' \
-               'Analysis methods used in h5temperature are detailed in: ' \
-               '<a href=\"https://doi.org/10.1080/08957950412331331718\">' \
-               'Benedetti and Loubeyre (2004), ' \
-               'High Pressure Research, 24:4, 423-445</a> <br><br>' \
-               'Copyright 2023-2024 Alexis Forestier ' \
-               '(alforestier@gmail.com) <br><br>' \
-               '<small> <small> <small>' \
-               'h5temperature is free software: you can redistribute ' \
-               'it and/or modify it under the terms of the '  \
-               'GNU General Public License as published by the ' \
-               'Free Software Foundation, either version 3 of the '  \
-               'License, or (at your option) any later version. ' \
-               'h5temperature is distributed in the hope that it '  \
-               'will be useful, but WITHOUT ANY WARRANTY; without '  \
-               'even the implied warranty of MERCHANTABILITY or ' \
-               'FITNESS FOR A PARTICULAR PURPOSE. See the GNU ' \
-               'General Public License for more details. ' \
-               'You should have received a copy of the GNU General ' \
-               'Public License along with h5temperature. '  \
-               'If not, see <a href=\"https://www.gnu.org/licenses/\">' \
-               'https://www.gnu.org/licenses/</a>.' \
-               '</small> </small> </small>' \
-               '</center>' 
-        msg = QMessageBox(self)
-        msg.setWindowTitle("About h5temperature")
-        msg.setText(text)
-        msg.setStyleSheet("background-color: white;")
-        msg.exec_()
+
 
     @pyqtSlot()
     def load_h5file(self):
@@ -482,3 +443,38 @@ class MainWindow(QWidget):
                 # empty if no data e.g. main item of a serie
                 self.canvas.clear_all()
                 self.results_table.clearContents()
+
+
+    @pyqtSlot()
+    def show_about(self):
+        text = '<center>' \
+               '<h1> h5temperature </h1>' \
+               '<h2> version {}</h2>'.format(__version__) + '<br>' \
+               'Analysis methods used in h5temperature are detailed in: ' \
+               '<a href=\"https://doi.org/10.1080/08957950412331331718\">' \
+               'Benedetti and Loubeyre (2004), ' \
+               'High Pressure Research, 24:4, 423-445</a> <br><br>' \
+               'Copyright 2023-2024 Alexis Forestier ' \
+               '(alforestier@gmail.com) <br><br>' \
+               '<small> <small> <small>' \
+               'h5temperature is free software: you can redistribute ' \
+               'it and/or modify it under the terms of the '  \
+               'GNU General Public License as published by the ' \
+               'Free Software Foundation, either version 3 of the '  \
+               'License, or (at your option) any later version. ' \
+               'h5temperature is distributed in the hope that it '  \
+               'will be useful, but WITHOUT ANY WARRANTY; without '  \
+               'even the implied warranty of MERCHANTABILITY or ' \
+               'FITNESS FOR A PARTICULAR PURPOSE. See the GNU ' \
+               'General Public License for more details. ' \
+               'You should have received a copy of the GNU General ' \
+               'Public License along with h5temperature. '  \
+               'If not, see <a href=\"https://www.gnu.org/licenses/\">' \
+               'https://www.gnu.org/licenses/</a>.' \
+               '</small> </small> </small>' \
+               '</center>' 
+        msg = QMessageBox(self)
+        msg.setWindowTitle("About h5temperature")
+        msg.setText(text)
+        msg.setStyleSheet("background-color: white;")
+        msg.exec_()
