@@ -22,12 +22,8 @@ from PyQt5.QtWidgets import (QApplication,
                              QLabel,
                              QSpinBox,
                              QCheckBox,
-                             QTableWidget,
-                             QTableWidgetItem,
-                             QAbstractItemView,
                              QMenu,
                              QAction,
-                             QHeaderView,
                              QGroupBox,
                              QPushButton,
                              QTreeWidget,
@@ -36,16 +32,16 @@ from PyQt5.QtWidgets import (QApplication,
                              QVBoxLayout,
                              QHBoxLayout,
                              QFileDialog,
-                             QMessageBox,
-                             QSizePolicy)
+                             QMessageBox)
 from PyQt5.QtCore import Qt, pyqtSlot
 
 from h5temperature import __version__
 import h5temperature.physics as Ph 
 from h5temperature.formats import get_data_from_h5group, get_data_from_ascii
 from h5temperature.models import BlackBodySpec
-from h5temperature.views import (FourPlotsCanvas,
+from h5temperature.plots import (FourPlotsCanvas,
                                  ChooseDeltaWindow)
+from h5temperature.tables import SingleFitResultsTable
 
 
 class MainWindow(QWidget):
@@ -132,31 +128,8 @@ class MainWindow(QWidget):
         fitparam_form.addRow('Upper limit (nm):', upperbound_spinbox)
         fitparam_form.addRow('2-color delta (px):', self.delta_spinbox)
         
+        self.results_table = SingleFitResultsTable()
 
-        self.results_table = QTableWidget(6,1)
-        self.results_table.setStyleSheet('QTableWidget '
-                                         '{border: 1px solid gray ;'
-                                          'font-weight: bold ;'
-                                          'background-color: white ;}')
-
-        self.results_table.resizeRowsToContents()
-        self.results_table.resizeColumnsToContents()
-        self.results_table.horizontalHeader().setVisible(False)
-        self.results_table.horizontalHeader().setSectionResizeMode( 
-                    QHeaderView.Stretch)
-        self.results_table.verticalHeader().setSectionResizeMode( 
-                    QHeaderView.Stretch)
-        self.results_table.setSizePolicy(QSizePolicy.Preferred, 
-                                QSizePolicy.Preferred)
-        # not selectable, not editable:
-        self.results_table.setSelectionMode(QAbstractItemView.NoSelection)
-        self.results_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.results_table.setVerticalHeaderLabels(["T Planck (K)", 
-                                                    "T Wien (K)",
-                                                    "T 2-color (K)",
-                                                    "T 2-c std dev (K)",
-                                                    "multiplier Planck",
-                                                    "multiplier Wien"])
 
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
@@ -498,7 +471,7 @@ class MainWindow(QWidget):
                     self.eval_fits()
                 
                 self.canvas.update_all(current)
-                self.update_table()
+                self.results_table.set_values(current)
 
                 # this should update the choose delta window if it stays open!
                 # but lead to call again choose_delta after delta update... 
@@ -509,20 +482,3 @@ class MainWindow(QWidget):
                 # empty if no data e.g. main item of a serie
                 self.canvas.clear_all()
                 self.results_table.clearContents()
-
-    def update_table(self):
-        item = self.dataset_tree.currentItem()
-        current = self.get_data_from_tree_item(item)
-
-        self.results_table.setItem(0, 0, 
-                    QTableWidgetItem(str(round(current.T_planck))))
-        self.results_table.setItem(0, 1, 
-                    QTableWidgetItem(str(round(current.T_wien))))
-        self.results_table.setItem(0, 2, 
-                    QTableWidgetItem(str(round(current.T_twocolor))))
-        self.results_table.setItem(0, 3, 
-                    QTableWidgetItem(str(round(current.T_std_twocolor))))
-        self.results_table.setItem(0, 4, 
-                    QTableWidgetItem(str(round(current.eps_planck,3))))
-        self.results_table.setItem(0, 5, 
-                    QTableWidgetItem(str(round(current.eps_wien,3))))

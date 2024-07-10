@@ -32,7 +32,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.fig, self.axes = plt.subplots(2, 2, 
                             constrained_layout=True)
 
-        super(FourPlotsCanvas, self).__init__(self.fig)
+        super().__init__(self.fig)
 
         self.ax_planck_res = self.axes[0,0].twinx()
         self.ax_wien_res = self.axes[0,1].twinx()
@@ -301,7 +301,7 @@ class SinglePlotCanvas(FigureCanvasQTAgg):
         self.fig, self.ax = plt.subplots(
             constrained_layout=True)
 
-        super(SinglePlotCanvas, self).__init__(self.fig)
+        super().__init__(self.fig)
 
 
 
