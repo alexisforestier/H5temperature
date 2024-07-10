@@ -172,7 +172,9 @@ class MainWindow(QWidget):
         
         self.setLayout(layout)
 
-        # connects :
+        self.create_connects()
+
+    def create_connects(self):
 
         self.about_button.clicked.connect(self.show_about)
         self.load_button.clicked.connect(self.load_h5file)
@@ -190,7 +192,6 @@ class MainWindow(QWidget):
         self.choosedelta_button.clicked.connect(self.choose_delta)
         self.choosedelta_win.delta_changed.connect(self.update_delta)
 
-
         # on change in parameters widgets it is updated in self.pars
         self.lowerbound_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('lowerb', x))
@@ -203,25 +204,40 @@ class MainWindow(QWidget):
         self.upperbound_spinbox.editingFinished.connect(self.update)
         self.delta_spinbox.editingFinished.connect(self.update)
 
+        self.load_menu.triggered.connect(self.load_menu_slot)
+
+    @pyqtSlot(QAction)
+    def load_menu_slot(self, action):
+        if action.text() == 'Load h5':
+            self.load_h5file()
+        elif action.text() == 'Load ASCII':
+            self.load_ascii()
 
     @pyqtSlot(QPoint)
     def show_load_menu(self, pos):
         self.load_menu.exec_(self.load_button.mapToGlobal(pos))
 
+    @pyqtSlot()
+    def load_h5file(self):
+        options = QFileDialog.Options()
+        # ! use Native dialog or qt dialog... 
+        # ! Must be checked on different platforms !
 
-    def get_data_from_tree_item(self, item):
-        if item:
-            key = item.text(0)
-            # if it is a sub item:
-            if item.parent() is not None:
-                parent_key = item.parent().text(0)
-                return self.data[parent_key][key]
-            # if it is a proper individual measurementy:
-            elif item.childCount() == 0:
-                return self.data[key]
-            # it may be the main key of a serie of measurements:
-            else: 
-                return None 
+    #   options |= QFileDialog.DontUseNativeDialog
+        self.filepath, _ = QFileDialog.getOpenFileName(self,
+            "Load HDF5 file", "","HDF5 file *.h5 *.hdf5 (*.h5 *.hdf5)", 
+            options=options)
+
+        if self.filepath:
+            self.get_h5file_content()
+            self.populate_dataset_tree()
+            self.currentfilename_label.setText(self.filepath.split('/')[-1])
+
+    @pyqtSlot()
+    def reload_h5file(self):
+        if self.filepath:
+            self.get_h5file_content()
+            self.populate_dataset_tree()
 
     def get_h5file_content(self):
         # read h5 file and store in self.data: 
@@ -243,8 +259,45 @@ class MainWindow(QWidget):
                                     k = '{}'.format(i)
                                     self.data[nam][k] = BlackBodySpec(nam,**di)
 
+    @pyqtSlot()
+    def load_ascii(self):
+        options = QFileDialog.Options()
+        # ! use Native dialog or qt dialog... 
+        # ! Must be checked on different platforms !
 
-    def populate_dataset_tree(self):        
+    #   options |= QFileDialog.DontUseNativeDialog
+        self.filepaths, _ = QFileDialog.getOpenFileNames(self,
+            "Load Text file", "","Text File *.txt *.dat *.asc "
+                        "(*.txt *.dat *.asc);;Any File *.* (*.*)", 
+            options=options)
+
+        if self.filepaths:
+            for f in self.filepaths:
+                name = f.split('/')[-1]
+                d1 = get_data_from_ascii(f)
+
+                if name not in self.data:
+                    self.data[name] = BlackBodySpec(name, **d1)
+
+            self.populate_dataset_tree()
+
+    def get_data_from_tree_item(self, item):
+        ''' from item clicked returns the corresponding instance of 
+        BlackBodySpec '''
+        if item:
+            key = item.text(0)
+            # if it is a sub item:
+            if item.parent() is not None:
+                parent_key = item.parent().text(0)
+                return self.data[parent_key][key]
+            # if it is a proper individual measurementy:
+            elif item.childCount() == 0:
+                return self.data[key]
+            # it may be the main key of a serie of measurements:
+            else: 
+                return None 
+
+    def populate_dataset_tree(self):
         if self.data:
             # sort datasets in chronological order
             # this may one day be a class method?
@@ -279,49 +332,6 @@ class MainWindow(QWidget):
                     #self.dataset_tree.addTopLevelItem(QTreeWidgetItem([n]))
 
 
-
-    @pyqtSlot()
-    def load_h5file(self):
-        options = QFileDialog.Options()
-        # ! use Native dialog or qt dialog... 
-        # ! Must be checked on different platforms !
-
-    #   options |= QFileDialog.DontUseNativeDialog
-        self.filepath, _ = QFileDialog.getOpenFileName(self,
-            "Load HDF5 file", "","HDF5 file *.h5 *.hdf5 (*.h5 *.hdf5)", 
-            options=options)
-
-        if self.filepath:
-            self.get_h5file_content()
-            self.populate_dataset_tree()
-            self.currentfilename_label.setText(self.filepath.split('/')[-1])
-
-    @pyqtSlot()
-    def reload_h5file(self):
-        if self.filepath:
-            self.get_h5file_content()
-            self.populate_dataset_tree()
-
-    @pyqtSlot()
-    def load_ascii(self):
-        options = QFileDialog.Options()
-        # ! use Native dialog or qt dialog... 
-        # ! Must be checked on different platforms !
-
-    #   options |= QFileDialog.DontUseNativeDialog
-        self.filepath, _ = QFileDialog.getOpenFileName(self,
-            "Load Text file", "","Text File *.txt *.dat *.asc "
-                        "(*.txt *.dat *.asc);;Any File *.* (*.*)", 
-            options=options)
-
-        if self.filepath:
-            d = get_data_from_ascii(self.filepath)
-
-            name = self.filepath.split('/')[-1]
-            # populate
-            self.data[name] = BlackBodySpec(name, **d)
-            self.populate_dataset_tree()
-
     @pyqtSlot()            
     def export_current_raw(self):
         item = self.dataset_tree.currentItem()
@@ -337,7 +347,7 @@ class MainWindow(QWidget):
                                             "",
                                             "Text File (*.txt);;All Files (*)", 
                                             options=options)
-    
+
             if filename:
                 if filetype == 'Text File (*.txt)':
                     if '.txt' in filename:
@@ -349,14 +359,14 @@ class MainWindow(QWidget):
                 twocolor_ = np.empty( len(current.lam) )
                 # fill with NaN
                 twocolor_.fill(np.nan) 
-    
+
                 nans = np.empty(current.pars['delta'])
                 nans.fill(np.nan)
-    
+
                 dat1 = np.concatenate([current.twocolor, nans])
                 # populate twocolor_ only where data should be, the rest is nan
                 twocolor_[current.ind_interval] = dat1
-    
+
                 data_ = np.column_stack((current.lam,
                                          current.planck,
                                          current.wien,
@@ -366,7 +376,6 @@ class MainWindow(QWidget):
                            delimiter='\t', 
                            comments='',
                            header='lambda\tPlanck\tWien\ttwocolor')
-
 
     @pyqtSlot(int)
     def update_delta(self, x):
@@ -443,7 +452,6 @@ class MainWindow(QWidget):
                 # empty if no data e.g. main item of a serie
                 self.canvas.clear_all()
                 self.results_table.clearContents()
-
 
     @pyqtSlot()
     def show_about(self):

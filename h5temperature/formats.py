@@ -49,6 +49,10 @@ def get_data_from_h5group(group):
     return out
 
 def get_data_from_ascii(path):
+    
+    # Simplest implementation
+    # This should be improved with a 'parser' for headers, separators...etc
+
     darr = np.loadtxt(path)
     lam = darr[:,0]
     planck = darr[:,1]
@@ -56,8 +60,3 @@ def get_data_from_ascii(path):
     out = dict(lam=lam, planck=planck, time=None)
     
     return out
-
-
-
-if __name__ == '__main__':
-    print( get_data_from_ascii('/home/alex/Bureau/frame00.txt') )
