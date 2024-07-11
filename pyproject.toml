@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "h5temperature"
+version = "0.4.0"
+description = "h5temperature is a user-friendly application designed for analyzing radiometric temperature measurements from laser-heating experiments in diamond anvil cells. It supports ESRF HDF5 data files, offers data fitting with Planck and Wien formulas, and sliding two-color pyrometry analysis."
+authors = ["alexisforestier <alforestier@gmail.com>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.6, <3.13"
+numpy = "^1.19.5"
+matplotlib = "^3.3.4"
+PyQt5 = "^5.15.2"
+h5py = ">=2.10.0"
+scipy = "^1.5.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
