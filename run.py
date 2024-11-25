@@ -1,4 +1,3 @@
-if __name__ == '__main__':
-	from h5temperature import main
+from h5temperature import main
 
-	main()
+main()

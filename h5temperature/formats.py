@@ -21,7 +21,7 @@ import datetime
 
 def get_data_from_h5group(group):
 
-    t1 = str(np.array(group['end_time'])[()])
+    t1 = str(np.array(group['start_time'])[()])
     
     try:
         time = datetime.datetime.strptime(t1, "b'%Y-%m-%dT%H:%M:%S.%f%z'")
