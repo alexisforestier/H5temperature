@@ -41,13 +41,18 @@ class BlackBodySpec():
         else:
             self.timestamp = None
 
-        self.wien = Ph.wien(self.lam, self.planck)
+        self.rawwien = Ph.wien(self.lam, self.planck)
+        
+        # wien initialized as rawwien:
+        self.rawwien = self.wien
 
         # pars for a given measurement.
         self.pars = dict(lowerb = None,
                          upperb = None,
-                         delta  = None)
+                         delta  = None,
+                         usebg  = None)
 
+        self.bg = 0
         self.ind_interval = None
 
         self.twocolor = None
@@ -66,7 +71,7 @@ class BlackBodySpec():
 
 
     def set_pars(self, pars):
-        # deepcopy necessary otherwise always point to the mainwindow pars!
+        # deepcopy necessary otherwise always point to the mainwindow pars!!
         self.pars = deepcopy(pars)
         self.ind_interval = np.logical_and(self.lam >= self.pars['lowerb'], 
                                            self.lam <= self.pars['upperb'])
@@ -77,14 +82,18 @@ class BlackBodySpec():
                                       self.wien[self.ind_interval], 
                                       self.pars['delta'])
 
-        self.T_twocolor = np.mean(self.twocolor)
-        self.T_std_twocolor = np.std(self.twocolor)
+        # namean/std for cases where I-bg < 0, it returns nan
+        self.T_twocolor = np.nanmean(self.twocolor)
+        self.T_std_twocolor = np.nanstd(self.twocolor)
         
 
     def eval_wien_fit(self):
+        # in cases of I-bg < 0, the wien fct returns np.nan:
+        # we keep only valid data for the fit.
+        keepind = np.isfinite(self.wien[self.ind_interval])
         
-        x1 = (1/self.lam[self.ind_interval])
-        y1 = (self.wien[self.ind_interval])
+        x1 = (1/self.lam[self.ind_interval])[keepind]
+        y1 = (self.wien[self.ind_interval])[keepind]
 
         a, b = np.polyfit(x1, y1, 1) # order = 1, linear
         
@@ -105,10 +114,16 @@ class BlackBodySpec():
             Tguess = 2000
             eps_guess = 1e-6
 
-                   # eps     ,   temp
-        p0      =  (eps_guess,   Tguess)
-        pbounds = ((        0,        0),
-                   (  +np.inf,      2e4))
+        if self.pars['usebg']:
+                       # eps     ,   temp ,        bg
+            p0      =  (eps_guess,   Tguess,        0)
+            pbounds = ((        0,        0,  -np.inf),
+                       (  +np.inf,      2e4,  +np.inf))
+        else:
+                       # eps     ,   temp     
+            p0      =  (eps_guess,   Tguess)
+            pbounds = ((        0,        0),
+                       (  +np.inf,      2e4))            
 
         p_planck, cov_planck = curve_fit(Ph.planck, 
                                          self.lam[self.ind_interval], 

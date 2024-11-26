@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import (QTableWidget,
 
 class SingleFitResultsTable(QTableWidget):
     def __init__(self):
-        super().__init__(6,1)
+        super().__init__(7,1)
 
         self.setStyleSheet('QTableWidget '
                            '{border: 1px solid gray ;'
@@ -47,7 +47,8 @@ class SingleFitResultsTable(QTableWidget):
                                       "T 2-color (K)",
                                       "T 2-c std dev (K)",
                                       "multiplier Planck",
-                                      "multiplier Wien"])
+                                      "multiplier Wien", 
+                                      "background"])
 
     def set_values(self, current):
         self.setItem(0, 0, QTableWidgetItem(str(round(current.T_planck))))
@@ -56,3 +57,4 @@ class SingleFitResultsTable(QTableWidget):
         self.setItem(0, 3, QTableWidgetItem(str(round(current.T_std_twocolor))))
         self.setItem(0, 4, QTableWidgetItem(str(round(current.eps_planck,3))))
         self.setItem(0, 5, QTableWidgetItem(str(round(current.eps_wien,3))))
+        self.setItem(0, 6, QTableWidgetItem(str(round(current.bg,3))))

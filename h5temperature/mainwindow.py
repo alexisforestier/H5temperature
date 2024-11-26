@@ -59,7 +59,8 @@ class MainWindow(QWidget):
         # current parameters in the mainwindow and their default values
         self.pars = dict(lowerb = 550,
                          upperb = 900,
-                         delta = 100)
+                         delta = 100,
+                         usebg = False)
 
         # left layout   
         self.load_button = QPushButton('Load h5')
@@ -105,6 +106,7 @@ class MainWindow(QWidget):
         self.lowerbound_spinbox = QSpinBox()
         self.upperbound_spinbox = QSpinBox()
         self.delta_spinbox = QSpinBox()
+        self.usebg_checkbox = QCheckBox('Use background')
 
         self.lowerbound_spinbox.setMinimum(1)
         self.upperbound_spinbox.setMinimum(1)
@@ -117,6 +119,7 @@ class MainWindow(QWidget):
         self.lowerbound_spinbox.setValue(self.pars.get('lowerb'))
         self.upperbound_spinbox.setValue(self.pars.get('upperb'))
         self.delta_spinbox.setValue(self.pars.get('delta'))
+        self.usebg_checkbox.setChecked(self.pars.get('usebg'))
 
         self.choosedelta_button = QPushButton('Choose delta')
         self.fit_button = QPushButton('Fit')
@@ -130,6 +133,7 @@ class MainWindow(QWidget):
 
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
+        fit_layout.addWidget(self.usebg_checkbox)
         fit_layout.addWidget(self.choosedelta_button)
         fit_layout.addWidget(self.fit_button)
         fit_layout.addWidget(self.results_table)
@@ -203,6 +207,8 @@ class MainWindow(QWidget):
         self.lowerbound_spinbox.editingFinished.connect(self.update)
         self.upperbound_spinbox.editingFinished.connect(self.update)
         self.delta_spinbox.editingFinished.connect(self.update)
+        # To be checked how this is accounted for: 
+        self.usebg_checkbox.stateChanged.connect(self.update)
 
         self.load_menu.triggered.connect(self.load_menu_slot)
 
