@@ -117,20 +117,21 @@ class BlackBodySpec():
 
         if self.pars['usebg']:
                        # eps     ,   temp ,        bg
-            p0      =  (eps_guess,   Tguess,        0)
-            pbounds = ((        0,        0,  -np.inf),
+            p0      =  (eps_guess,   Tguess,        1)
+            pbounds = ((        0,        0,        0),
                        (  +np.inf,      2e4,  +np.inf))
         else:
                        # eps     ,   temp     
             p0      =  (eps_guess,   Tguess)
             pbounds = ((        0,        0),
-                       (  +np.inf,      2e4))            
+                       (  +np.inf,      2e4))
 
         p_planck, cov_planck = curve_fit(Ph.planck, 
                                          self.lam[self.ind_interval], 
                                          self.planck[self.ind_interval],                         
                                          p0 = p0,
-                                         bounds = pbounds)    
+                                         bounds = pbounds,
+                                         method = 'dogbox')    
 
         self.planck_fit = Ph.planck(self.lam[self.ind_interval], *p_planck)
         self.planck_residuals = self.planck[self.ind_interval]-self.planck_fit
@@ -143,3 +144,22 @@ class BlackBodySpec():
         else:
             self.bg = 0
             self.wien = self.rawwien
+
+
+class TemperaturesBatch():
+    def __init__(self, measurements):
+        self.measurements = measurements
+        self.n_points = len(self.measurements)
+
+        self.frames = np.empty(self.n_points)
+        self.keys = np.empty(self.n_points)
+        self.plancks = np.empty(self.n_points)
+        self.wiens = np.empty(self.n_points)
+        self.stddevs = np.empty(self.n_points)
+
+        for i, (key, meas) in enumerate(self.measurements.items()):
+            self.frames[i] = i
+            self.keys[i] = key
+            self.plancks[i] = meas.T_planck
+            self.wiens[i] = meas.T_wien
+            self.stddevs[i] = meas.T_std_twocolor

@@ -39,7 +39,7 @@ from PyQt5.QtCore import Qt, pyqtSlot, QPoint
 from h5temperature import __version__
 import h5temperature.physics as Ph 
 from h5temperature.formats import get_data_from_h5group, get_data_from_ascii
-from h5temperature.models import BlackBodySpec
+from h5temperature.models import BlackBodySpec, TemperaturesBatch
 from h5temperature.plots import (FourPlotsCanvas,
                                  ChooseDeltaWindow,
                                  BatchWindow)
@@ -56,6 +56,7 @@ class MainWindow(QWidget):
         # data stored in MainWindow
         self.filepath = str()
         self.data = dict()
+#        self.current_batch = None
 
         # current parameters in the mainwindow and their default values
         self.pars = dict(lowerb = 550,
@@ -475,43 +476,39 @@ class MainWindow(QWidget):
                 self.results_table.clearContents()
 
 
+
     @pyqtSlot()
     def batch_fit(self):
         if not self.batch_win.isVisible():
             self.batch_win.show()
 
         item = self.dataset_tree.currentItem()
-        nchilds = item.childCount()
 
-        frames = []
-        planck_temps = []
-        wien_temps = []
-        stddevs = []
+        # Group mode:
+        if item.childCount() > 0:
+            parent_item = item
+            nchilds = item.childCount()
+        elif item.parent():
+            parent_item = item.parent()
+            nchilds = parent_item.childCount()
+        else:
+            nchilds = item.childCount()
 
-        # item must be a parent item for now
         if nchilds > 0: 
-            parent_key = item.text(0)
+            parent_key = parent_item.text(0)
             for i in range(nchilds):
-                subitem = item.child(i)
+                subitem = parent_item.child(i)
                 key = subitem.text(0)
                 current = self.data[parent_key][key]
 
+                # will fit all subitems:
                 self.dataset_tree.setCurrentItem(subitem)
 
-                frames.append(i)
-                planck_temps.append(current.T_planck)
-                wien_temps.append(current.T_wien)
-                stddevs.append(current.T_std_twocolor)
+            self.current_batch = TemperaturesBatch(self.data[parent_key]) 
+            self.batch_win.replot(self.current_batch)
 
-            self.batch_win.replot(frames, planck_temps, wien_temps, stddevs)
-
-        # later we may consider: 
-        # - if inside a group then batch fit this group
-        # - and/or accept multiselection mode in dataset_tree 
-        # for the user toset the batch to fit
         else:
             pass
-
 
 
     @pyqtSlot()

@@ -44,8 +44,8 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         return self.navigation_toolbar
         
     def create_all(self):
-        self.create_labels()
         self.create_artists()
+        self.create_labels()
         self.create_legends()
         self.create_texts()
 
@@ -63,12 +63,12 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.draw_idle()
 
     def clear_all(self):
+        self.ax_planck_res.clear()
+        self.ax_wien_res.clear()
         self.axes[0,0].clear()
         self.axes[0,1].clear()
         self.axes[1,0].clear()
         self.axes[1,1].clear()
-        self.ax_planck_res.clear()
-        self.ax_wien_res.clear()
 
         # re-create all 
         self.create_all()
@@ -103,6 +103,11 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         # Two color Histogram
         self.axes[1,1].set_xlabel('two-color temperature (K)')
         self.axes[1,1].set_ylabel('frequency')
+
+        # fix for a matplotlib bug?
+        # https://github.com/matplotlib/matplotlib/issues/28268
+        self.ax_planck_res.yaxis.set_label_position('right') 
+        self.ax_wien_res.yaxis.set_label_position('right') 
 
     def create_artists(self):
         self.planck_data_pts = self.axes[0,0].scatter([], [], 
@@ -262,7 +267,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
                                               current.planck_residuals])
 
         if current.pars['usebg']:
-            self.planck_bg.set_ydata(current.bg)
+            self.planck_bg.set_ydata([current.bg])
             self.rawwien_data_pts.set_offsets(np.c_[1 / current.lam, current.rawwien])
 
             self.planck_bg.set_visible(True)
@@ -402,8 +407,6 @@ class ChooseDeltaWindow(QWidget):
 
 
 
-
-
 class BatchWindow(QWidget):
 
     # may be used for the user to select a given spectrum in the batch:
@@ -412,7 +415,7 @@ class BatchWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.resize(1000, 400)
+        self.resize(800, 300)
 
         self.setWindowTitle('h5temperature batch')
         self.setStyleSheet("background-color: white")
@@ -430,36 +433,36 @@ class BatchWindow(QWidget):
         # click event
 #        self.canvas.mpl_connect('button_press_event', self.choose)
 
-    def replot(self, frames, Ts_planck, Ts_wien, stddevs):
-
+    def replot(self, batch):
         self.canvas.ax.clear()
 
         self.canvas.ax.set_xlabel('Frame')
         self.canvas.ax.set_ylabel('Temperature (K)')
-
-        self.canvas.ax.errorbar(frames, Ts_planck, 
+        
+        self.canvas.ax.errorbar(batch.frames, batch.plancks, 
                                 xerr=None,
-                                yerr=stddevs,
+                                yerr=batch.stddevs,
                                 fmt='o',
-                                capsize=3,
+                                capsize=2,
                                 color='royalblue',
                                 linestyle=None,
-                                markersize=10,
+                                markersize=7,
                                 label='Planck')
 
-        self.canvas.ax.errorbar(frames, Ts_wien,
+        self.canvas.ax.errorbar(batch.frames, batch.wiens,
                                 xerr = None, 
                                 yerr = None,
                                 fmt='v',
                                 capsize=3,
                                 color='orange',
                                 linestyle=None,
-                                markersize=10,
+                                markersize=7,
                                 label='Wien')
 
         self.canvas.ax.legend()
 
-        self.canvas.ax.set_xlim([-1, np.max(frames)+1])
-        self.canvas.ax.set_ylim([np.min(Ts_planck)-100, np.max(Ts_planck)+100])
+        self.canvas.ax.set_xlim([-.5, np.max(batch.frames)+.5])
+        self.canvas.ax.set_ylim([np.min(batch.plancks) - 200, 
+                                 np.max(batch.plancks) + 200])
 
         self.canvas.draw()
