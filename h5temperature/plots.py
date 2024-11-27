@@ -108,23 +108,32 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.planck_data_pts = self.axes[0,0].scatter([], [], 
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.4,
+                                      alpha=.3,
                                       s=15, 
                                       zorder=5,
                                       label='Planck data')
-
+        
         self.wien_data_pts = self.axes[0,1].scatter([], [], 
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.4,
+                                      alpha=.3,
                                       s=15, 
                                       zorder=5,
                                       label='Wien data')
 
+        self.rawwien_data_pts = self.axes[0,1].scatter([], [], 
+                                      edgecolor='k',
+                                      facecolor='lightcoral',
+                                      marker='^',
+                                      alpha=.3,
+                                      s=15, 
+                                      zorder=0,
+                                      label='Wien data (no bg)')
+
         self.twocolor_data_pts = self.axes[1,0].scatter([], [],
                                       edgecolor='k',
                                       facecolor='royalblue',
-                                      alpha=.4,
+                                      alpha=.3,
                                       s=15, 
                                       zorder=5,
                                       label='two-color data')
@@ -133,16 +142,23 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
             self.hist_patches) = self.axes[1,1].hist([],
                                     color='darkblue',
                                     bins = 70,
-                                    alpha=.7, 
+                                    alpha=.5, 
                                     zorder=5,
                                     label='two-color histogram')
 
         # plot fits:
         self.planck_fit_line, = self.axes[0,0].plot([], [],
                                    color='r',
-                                   linewidth=2,
+                                   linewidth=2.5,
                                    zorder=7,
                                    label='Planck fit')
+
+        self.planck_bg = self.axes[0,0].axhline(0,
+                                      color='k',
+                                      linewidth=1.5,
+                                      linestyle='dashed',
+                                      zorder=3,
+                                      label='background')            
 
         self.planck_res_pts = self.ax_planck_res.scatter([], [], 
                                           edgecolor='gray',
@@ -155,7 +171,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
         self.wien_fit_line, = self.axes[0,1].plot([], [], 
                                    c='r', 
-                                   linewidth=2, 
+                                   linewidth=2.5, 
                                    zorder=7,
                                    label='Wien fit')
 
@@ -170,6 +186,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
         self.twocolor_line = self.axes[1,0].axhline(color='r',
                                       linestyle='dashed',
+                                      linewidth=2.5,
                                       zorder=7,
                                       label='mean')            
 
@@ -209,7 +226,7 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.wien_text.set_text(
                     'T$_{{Wien}}$= {:.0f} K'.format(current.T_wien))
         self.twocolor_text.set_text(
-                    'T$_{{two-color}}$= {:.0f} K'.format(current.T_twocolor))
+                    'T$_{{two\\mathrm{{-}}color}}$= {:.0f} K'.format(current.T_twocolor))
         self.twocolor_err_text.set_text(
                     'std. dev = {:.0f} K'.format(current.T_std_twocolor))
 
@@ -224,7 +241,10 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
                   current.twocolor])
 
         # could be calculated in the model instead of here
-        self.hist_counts, self.hist_bins = np.histogram(current.twocolor, bins=70)
+        # avoiding NaNs
+        self.hist_counts, self.hist_bins = np.histogram(
+                current.twocolor[np.isfinite(current.twocolor)], bins=70)
+
         # equal-width bins
         dbins = (self.hist_bins[1] - self.hist_bins[0])
 
@@ -240,6 +260,17 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
         self.planck_res_pts.set_offsets(np.c_[current.lam[current.ind_interval], 
                                               current.planck_residuals])
+
+        if current.pars['usebg']:
+            self.planck_bg.set_ydata(current.bg)
+            self.rawwien_data_pts.set_offsets(np.c_[1 / current.lam, current.rawwien])
+
+            self.planck_bg.set_visible(True)
+            self.rawwien_data_pts.set_visible(True)
+
+        else:
+            self.planck_bg.set_visible(False)
+            self.rawwien_data_pts.set_visible(False)
 
         self.wien_fit_line.set_data(1 / current.lam[current.ind_interval], 
                                     current.wien_fit)
@@ -275,8 +306,8 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
                                          0.5*np.ptp(current.wien_fit))])
 
         self.ax_wien_res.set_ylim([
-            np.min( current.wien_residuals ),
-            np.max( current.wien_residuals )])
+            np.nanmin( current.wien_residuals ),
+            np.nanmax( current.wien_residuals )])
 
         # 2color:
         self.axes[1,0].set_xlim([current.pars['lowerb'] - 20,

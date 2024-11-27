@@ -203,11 +203,13 @@ class MainWindow(QWidget):
                 lambda x: self.pars.__setitem__('upperb', x))
         self.delta_spinbox.valueChanged.connect(
                 lambda x: self.pars.__setitem__('delta', x))
+        self.usebg_checkbox.stateChanged.connect(
+                lambda: self.pars.__setitem__('usebg', 
+                    self.usebg_checkbox.isChecked()))
 
         self.lowerbound_spinbox.editingFinished.connect(self.update)
         self.upperbound_spinbox.editingFinished.connect(self.update)
         self.delta_spinbox.editingFinished.connect(self.update)
-        # To be checked how this is accounted for: 
         self.usebg_checkbox.stateChanged.connect(self.update)
 
         self.load_menu.triggered.connect(self.load_menu_slot)
@@ -373,6 +375,8 @@ class MainWindow(QWidget):
                 # populate twocolor_ only where data should be, the rest is nan
                 twocolor_[current.ind_interval] = dat1
 
+                # we do not export rawwien without BG correction if used. 
+                # This may change!
                 data_ = np.column_stack((current.lam,
                                          current.planck,
                                          current.wien,
@@ -396,7 +400,7 @@ class MainWindow(QWidget):
         if current:
             # calculate stdev vs. delta: could be done somewhere else?
             alldeltas = np.array(range(1,300))
-            allstddevs = np.array( [np.std(Ph.temp2color(
+            allstddevs = np.array( [np.nanstd(Ph.temp2color(
                                     current.lam[current.ind_interval], 
                                     current.wien[current.ind_interval], 
                                     di)) for di in alldeltas ] )
@@ -428,6 +432,10 @@ class MainWindow(QWidget):
             # start with wien to get a reasonable initial value for planck:
             current.eval_wien_fit()
             current.eval_planck_fit()            
+
+            # Refit wien again, accounting for bg obtained in Planck:
+            if current.pars['usebg']:
+                current.eval_wien_fit()
             # eval two color at the end in all cases
             current.eval_twocolor()
 

@@ -44,7 +44,8 @@ class BlackBodySpec():
         self.rawwien = Ph.wien(self.lam, self.planck)
         
         # wien initialized as rawwien:
-        self.rawwien = self.wien
+        # rawwien will remain the same 
+        self.wien = self.rawwien
 
         # pars for a given measurement.
         self.pars = dict(lowerb = None,
@@ -135,3 +136,10 @@ class BlackBodySpec():
         self.planck_residuals = self.planck[self.ind_interval]-self.planck_fit
         self.T_planck = p_planck[1]
         self.eps_planck = p_planck[0]
+
+        if self.pars['usebg']:
+            self.bg = p_planck[2]
+            self.wien = Ph.wien(self.lam, self.planck, self.bg)
+        else:
+            self.bg = 0
+            self.wien = self.rawwien
