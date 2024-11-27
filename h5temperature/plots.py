@@ -399,3 +399,67 @@ class ChooseDeltaWindow(QWidget):
         self.create_labels()
         self.create_artists()
         self.canvas.draw_idle()
+
+
+
+
+
+class BatchWindow(QWidget):
+
+    # may be used for the user to select a given spectrum in the batch:
+    # _changed = pyqtSignal(int)
+
+    def __init__(self):
+        super().__init__()
+
+        self.resize(1000, 400)
+
+        self.setWindowTitle('h5temperature batch')
+        self.setStyleSheet("background-color: white")
+        
+        self.canvas = SinglePlotCanvas(self)
+        self.toolbar = NavigationToolbar2QT(self.canvas, self)     
+        self.toolbar.setStyleSheet("font-size: 18px;")
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.toolbar)
+        layout.addWidget(self.canvas)
+
+        self.setLayout(layout)
+
+        # click event
+#        self.canvas.mpl_connect('button_press_event', self.choose)
+
+    def replot(self, frames, Ts_planck, Ts_wien, stddevs):
+
+        self.canvas.ax.clear()
+
+        self.canvas.ax.set_xlabel('Frame')
+        self.canvas.ax.set_ylabel('Temperature (K)')
+
+        self.canvas.ax.errorbar(frames, Ts_planck, 
+                                xerr=None,
+                                yerr=stddevs,
+                                fmt='o',
+                                capsize=3,
+                                color='royalblue',
+                                linestyle=None,
+                                markersize=10,
+                                label='Planck')
+
+        self.canvas.ax.errorbar(frames, Ts_wien,
+                                xerr = None, 
+                                yerr = None,
+                                fmt='v',
+                                capsize=3,
+                                color='orange',
+                                linestyle=None,
+                                markersize=10,
+                                label='Wien')
+
+        self.canvas.ax.legend()
+
+        self.canvas.ax.set_xlim([-1, np.max(frames)+1])
+        self.canvas.ax.set_ylim([np.min(Ts_planck)-100, np.max(Ts_planck)+100])
+
+        self.canvas.draw()

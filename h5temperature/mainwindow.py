@@ -41,7 +41,8 @@ import h5temperature.physics as Ph
 from h5temperature.formats import get_data_from_h5group, get_data_from_ascii
 from h5temperature.models import BlackBodySpec
 from h5temperature.plots import (FourPlotsCanvas,
-                                 ChooseDeltaWindow)
+                                 ChooseDeltaWindow,
+                                 BatchWindow)
 from h5temperature.tables import SingleFitResultsTable
 
 
@@ -123,6 +124,7 @@ class MainWindow(QWidget):
 
         self.choosedelta_button = QPushButton('Choose delta')
         self.fit_button = QPushButton('Fit')
+        self.batch_button = QPushButton('Batch')
 
         fitparam_form = QFormLayout()
         fitparam_form.addRow('Lower limit (nm):', self.lowerbound_spinbox)
@@ -136,6 +138,7 @@ class MainWindow(QWidget):
         fit_layout.addWidget(self.usebg_checkbox)
         fit_layout.addWidget(self.choosedelta_button)
         fit_layout.addWidget(self.fit_button)
+        fit_layout.addWidget(self.batch_button)
         fit_layout.addWidget(self.results_table)
         fit_layout.addStretch()
 
@@ -160,6 +163,8 @@ class MainWindow(QWidget):
 
         # setup choosedelta window
         self.choosedelta_win = ChooseDeltaWindow()
+        # setup batch window
+        self.batch_win = BatchWindow()
 
         # about button
         self.about_button = QPushButton('About')
@@ -187,6 +192,8 @@ class MainWindow(QWidget):
 
         self.dataset_tree.currentItemChanged.connect(self.update)
         self.fit_button.clicked.connect(self.update)
+
+        self.batch_button.clicked.connect(self.batch_fit)
 
         self.load_button.setContextMenuPolicy(Qt.CustomContextMenu)       
         self.load_button.customContextMenuRequested.connect(self.show_load_menu)
@@ -466,6 +473,46 @@ class MainWindow(QWidget):
                 # empty if no data e.g. main item of a serie
                 self.canvas.clear_all()
                 self.results_table.clearContents()
+
+
+    @pyqtSlot()
+    def batch_fit(self):
+        if not self.batch_win.isVisible():
+            self.batch_win.show()
+
+        item = self.dataset_tree.currentItem()
+        nchilds = item.childCount()
+
+        frames = []
+        planck_temps = []
+        wien_temps = []
+        stddevs = []
+
+        # item must be a parent item for now
+        if nchilds > 0: 
+            parent_key = item.text(0)
+            for i in range(nchilds):
+                subitem = item.child(i)
+                key = subitem.text(0)
+                current = self.data[parent_key][key]
+
+                self.dataset_tree.setCurrentItem(subitem)
+
+                frames.append(i)
+                planck_temps.append(current.T_planck)
+                wien_temps.append(current.T_wien)
+                stddevs.append(current.T_std_twocolor)
+
+            self.batch_win.replot(frames, planck_temps, wien_temps, stddevs)
+
+        # later we may consider: 
+        # - if inside a group then batch fit this group
+        # - and/or accept multiselection mode in dataset_tree 
+        # for the user toset the batch to fit
+        else:
+            pass
+
+
 
     @pyqtSlot()
     def show_about(self):
