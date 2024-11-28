@@ -409,9 +409,6 @@ class ChooseDeltaWindow(QWidget):
 
 class BatchWindow(QWidget):
 
-    # may be used for the user to select a given spectrum in the batch:
-    # _changed = pyqtSignal(int)
-
     def __init__(self):
         super().__init__()
 
@@ -438,7 +435,7 @@ class BatchWindow(QWidget):
 
         self.canvas.ax.set_xlabel('Frame')
         self.canvas.ax.set_ylabel('Temperature (K)')
-        
+
         self.canvas.ax.errorbar(batch.frames, batch.plancks, 
                                 xerr=None,
                                 yerr=batch.stddevs,

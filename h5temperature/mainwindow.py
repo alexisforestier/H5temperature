@@ -470,11 +470,11 @@ class MainWindow(QWidget):
                 # not really great
 #                if self.choosedelta_win.isVisible():
 #                    self.choose_delta()
+
             else:
                 # empty if no data e.g. main item of a serie
                 self.canvas.clear_all()
                 self.results_table.clearContents()
-
 
 
     @pyqtSlot()
@@ -544,3 +544,11 @@ class MainWindow(QWidget):
         msg.setText(text)
         msg.setStyleSheet("background-color: white;")
         msg.exec_()
+
+
+        # # diagnoses : 
+        # try:
+        #     for k, m in self.current_batch.measurements.items():
+        #         print(k , ' : ', m.pars)
+        # except:
+        #     pass
