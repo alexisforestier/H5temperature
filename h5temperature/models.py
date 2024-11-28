@@ -152,11 +152,13 @@ class TemperaturesBatch():
         self.n_points = len(self.measurements)
 
         self.frames = np.empty(self.n_points)
-        self.keys = np.empty(self.n_points)
+        # force str (U = unicode) for keys
+        self.keys = np.empty(self.n_points, dtype='U')
         self.plancks = np.empty(self.n_points)
         self.wiens = np.empty(self.n_points)
         self.stddevs = np.empty(self.n_points)
 
+    def extract_data(self):
         for i, (key, meas) in enumerate(self.measurements.items()):
             self.frames[i] = i
             self.keys[i] = key

@@ -56,7 +56,7 @@ class MainWindow(QWidget):
         # data stored in MainWindow
         self.filepath = str()
         self.data = dict()
-#        self.current_batch = None
+        self.current_batch = None
 
         # current parameters in the mainwindow and their default values
         self.pars = dict(lowerb = 550,
@@ -273,7 +273,7 @@ class MainWindow(QWidget):
                                 self.data[nam] = dict()
                                 for i, di in enumerate(d):
                                     k = '{}'.format(i)
-                                    self.data[nam][k] = BlackBodySpec(nam,**di)
+                                    self.data[nam][k] = BlackBodySpec(nam, **di)
 
     @pyqtSlot()
     def load_ascii(self):
@@ -432,10 +432,8 @@ class MainWindow(QWidget):
         self.canvas.clear_all()
         self.choosedelta_win.clear_canvas()
 
-    def eval_fits(self):
+    def eval_fits(self, current):
         # eval all quantities for a given spectrum
-        item = self.dataset_tree.currentItem()
-        current = self.get_data_from_tree_item(item)
         try:
             # start with wien to get a reasonable initial value for planck:
             current.eval_wien_fit()
@@ -450,6 +448,7 @@ class MainWindow(QWidget):
         except Exception as e:
             QMessageBox.critical(self, 'Error', str(e))
 
+
     @pyqtSlot()
     def update(self):
             item = self.dataset_tree.currentItem()
@@ -460,10 +459,18 @@ class MainWindow(QWidget):
                 # if current was never fitted current.pars is None 
                 if not current.pars == self.pars:
                     current.set_pars(self.pars)
-                    self.eval_fits()
+                    self.eval_fits(current)
                 
                 self.canvas.update_all(current)
                 self.results_table.set_values(current)
+
+              # item.text(0) from another group may interfere ? I ignore that for now:                
+              # current.name is always the parent name in the group, this may change
+              # or a class for groups ?  
+                if self.current_batch and (item.text(0) in self.current_batch.keys):
+                    self.current_batch.extract_data()
+                    self.batch_win.replot(self.current_batch)
+
 
                 # this should update the choose delta window if it stays open!
                 # but lead to call again choose_delta after delta update... 
@@ -485,26 +492,36 @@ class MainWindow(QWidget):
         item = self.dataset_tree.currentItem()
 
         # Group mode:
+        # item is a parent:
         if item.childCount() > 0:
             parent_item = item
             nchilds = item.childCount()
+            item.setExpanded(True)
+        # item is a child:
         elif item.parent():
             parent_item = item.parent()
             nchilds = parent_item.childCount()
+        # No Batch possible, nchilds = 0:
         else:
             nchilds = item.childCount()
 
-        if nchilds > 0: 
+        if nchilds > 0:
             parent_key = parent_item.text(0)
             for i in range(nchilds):
                 subitem = parent_item.child(i)
                 key = subitem.text(0)
                 current = self.data[parent_key][key]
 
-                # will fit all subitems:
-                self.dataset_tree.setCurrentItem(subitem)
+                # fit all subitems !
+                # if parameters have changed then we fit again
+                # if current was never fitted current.pars is None 
+                if not current.pars == self.pars:
+                    current.set_pars(self.pars)
+                    self.eval_fits(current)
 
-            self.current_batch = TemperaturesBatch(self.data[parent_key]) 
+            self.current_batch = TemperaturesBatch(self.data[parent_key])
+            self.current_batch.extract_data()
+
             self.batch_win.replot(self.current_batch)
 
         else:
@@ -544,11 +561,3 @@ class MainWindow(QWidget):
         msg.setText(text)
         msg.setStyleSheet("background-color: white;")
         msg.exec_()
-
-
-        # # diagnoses : 
-        # try:
-        #     for k, m in self.current_batch.measurements.items():
-        #         print(k , ' : ', m.pars)
-        # except:
-        #     pass
