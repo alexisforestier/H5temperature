@@ -56,7 +56,8 @@ class MainWindow(QWidget):
         # data stored in MainWindow
         self.filepath = str()
         self.data = dict()
-        self.current_batch = None
+        self.batch = None
+        self.autofit = True # <- automatic fit or not
 
         # current parameters in the mainwindow and their default values
         self.pars = dict(lowerb = 550,
@@ -109,6 +110,7 @@ class MainWindow(QWidget):
         self.upperbound_spinbox = QSpinBox()
         self.delta_spinbox = QSpinBox()
         self.usebg_checkbox = QCheckBox('Use background')
+        self.autofit_checkbox = QCheckBox('Auto Fit')
 
         self.lowerbound_spinbox.setMinimum(1)
         self.upperbound_spinbox.setMinimum(1)
@@ -122,10 +124,11 @@ class MainWindow(QWidget):
         self.upperbound_spinbox.setValue(self.pars.get('upperb'))
         self.delta_spinbox.setValue(self.pars.get('delta'))
         self.usebg_checkbox.setChecked(self.pars.get('usebg'))
+        self.autofit_checkbox.setChecked(self.autofit)
 
         self.choosedelta_button = QPushButton('Choose delta')
         self.fit_button = QPushButton('Fit')
-        self.batch_button = QPushButton('Batch')
+        self.batch_fit_button = QPushButton('Batch fit')
 
         fitparam_form = QFormLayout()
         fitparam_form.addRow('Lower limit (nm):', self.lowerbound_spinbox)
@@ -138,8 +141,9 @@ class MainWindow(QWidget):
         fit_layout.addLayout(fitparam_form)
         fit_layout.addWidget(self.usebg_checkbox)
         fit_layout.addWidget(self.choosedelta_button)
+        fit_layout.addWidget(self.autofit_checkbox)
         fit_layout.addWidget(self.fit_button)
-        fit_layout.addWidget(self.batch_button)
+        fit_layout.addWidget(self.batch_fit_button)
         fit_layout.addWidget(self.results_table)
         fit_layout.addStretch()
 
@@ -162,9 +166,8 @@ class MainWindow(QWidget):
 
         center_groupbox.setLayout(plot_layout)
 
-        # setup choosedelta window
+        # setup other windows
         self.choosedelta_win = ChooseDeltaWindow()
-        # setup batch window
         self.batch_win = BatchWindow()
 
         # about button
@@ -186,20 +189,20 @@ class MainWindow(QWidget):
 
     def create_connects(self):
 
-        self.about_button.clicked.connect(self.show_about)
         self.load_button.clicked.connect(self.load_h5file)
-        self.reload_button.clicked.connect(self.reload_h5file)
-        self.clear_button.clicked.connect(self.clear_all)
-
-        self.dataset_tree.currentItemChanged.connect(self.update)
-        self.fit_button.clicked.connect(self.update)
-
-        self.batch_button.clicked.connect(self.batch_fit)
-
         self.load_button.setContextMenuPolicy(Qt.CustomContextMenu)       
         self.load_button.customContextMenuRequested.connect(self.show_load_menu)
 
+        self.reload_button.clicked.connect(self.reload_h5file)
+        self.clear_button.clicked.connect(self.clear_all)
+        self.about_button.clicked.connect(self.show_about)
+
         self.exportraw_button.clicked.connect(self.export_current_raw)
+
+        self.dataset_tree.currentItemChanged.connect(self.update_plots)
+
+        self.fit_button.clicked.connect(self.update)
+        self.batch_fit_button.clicked.connect(self.batch_fit)
 
         self.choosedelta_button.clicked.connect(self.choose_delta)
         self.choosedelta_win.delta_changed.connect(self.update_delta)
@@ -214,11 +217,13 @@ class MainWindow(QWidget):
         self.usebg_checkbox.stateChanged.connect(
                 lambda: self.pars.__setitem__('usebg', 
                     self.usebg_checkbox.isChecked()))
+        self.autofit_checkbox.stateChanged.connect(
+                lambda b: setattr(self, 'autofit', bool(b)))
 
-        self.lowerbound_spinbox.editingFinished.connect(self.update)
-        self.upperbound_spinbox.editingFinished.connect(self.update)
-        self.delta_spinbox.editingFinished.connect(self.update)
-        self.usebg_checkbox.stateChanged.connect(self.update)
+#        self.lowerbound_spinbox.editingFinished.connect(self.update)
+#        self.upperbound_spinbox.editingFinished.connect(self.update)
+#        self.delta_spinbox.editingFinished.connect(self.update)
+#        self.usebg_checkbox.stateChanged.connect(self.update)
 
         self.load_menu.triggered.connect(self.load_menu_slot)
 
@@ -428,6 +433,7 @@ class MainWindow(QWidget):
         self.data = dict()
         self.dataset_tree.clear()
         self.results_table.clearContents()
+        self.batch = None
 
         self.canvas.clear_all()
         self.choosedelta_win.clear_canvas()
@@ -450,38 +456,46 @@ class MainWindow(QWidget):
 
 
     @pyqtSlot()
-    def update(self):
-            item = self.dataset_tree.currentItem()
-            current = self.get_data_from_tree_item(item)
+    def update_plots(self):
 
-            if current:
-                # if parameters have changed then we fit again
-                # if current was never fitted current.pars is None 
-                if not current.pars == self.pars:
-                    current.set_pars(self.pars)
-                    self.eval_fits(current)
-                
-                self.canvas.update_all(current)
+        item = self.dataset_tree.currentItem()
+        current = self.get_data_from_tree_item(item)
+
+        if current:
+            if current._fitted:
+                self.canvas.update_fits(current)
                 self.results_table.set_values(current)
-
-              # item.text(0) from another group may interfere ? I ignore that for now:                
-              # current.name is always the parent name in the group, this may change
-              # or a class for groups ?  
-                if self.current_batch and (item.text(0) in self.current_batch.keys):
-                    self.current_batch.extract_data()
-                    self.batch_win.replot(self.current_batch)
-
-
-                # this should update the choose delta window if it stays open!
-                # but lead to call again choose_delta after delta update... 
-                # not really great
-#                if self.choosedelta_win.isVisible():
-#                    self.choose_delta()
-
             else:
-                # empty if no data e.g. main item of a serie
                 self.canvas.clear_all()
                 self.results_table.clearContents()
+                if self.autofit:
+                    # if current was never fitted current.pars is None 
+                    if not current.pars == self.pars:
+                        current.set_pars(self.pars)
+                        self.eval_fits(current)
+                        self.canvas.update_fits(current)        
+                        self.results_table.set_values(current)
+
+            # in all cases we plot data
+            self.canvas.update_data(current)
+
+            # item.text(0) from another group may interfere ? I ignore that for now:                
+            # current.name is always the parent name in the group, this may change
+            # or a class for groups ?  
+            if self.batch and (item.text(0) in self.batch.keys):
+                self.batch.extract_data()
+                self.batch_win.replot(self.batch)
+
+        # no item selected:
+        else:
+            # empty if no data e.g. main item of a serie
+            self.canvas.clear_all()
+            self.results_table.clearContents()
+        # this should update the choose delta window if it stays open!
+        # but lead to call again choose_delta after delta update... 
+        # not really great
+#        if self.choosedelta_win.isVisible():
+#            self.choose_delta()
 
 
     @pyqtSlot()
@@ -519,10 +533,10 @@ class MainWindow(QWidget):
                     current.set_pars(self.pars)
                     self.eval_fits(current)
 
-            self.current_batch = TemperaturesBatch(self.data[parent_key])
-            self.current_batch.extract_data()
+            self.batch = TemperaturesBatch(self.data[parent_key])
+            self.batch.extract_data()
 
-            self.batch_win.replot(self.current_batch)
+            self.batch_win.replot(self.batch)
 
         else:
             pass

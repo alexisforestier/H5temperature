@@ -55,12 +55,27 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.axes[0,1].set_zorder(2)
         self.axes[0,1].set_frame_on(False)
 
-    def update_all(self, current):
-        self.set_data(current)
+    def update_fits(self, current):
+#        self.set_data(current)
+        self.set_fits(current)
         self.set_texts(current)
         self.autoscale(current)
 
         self.draw_idle()
+
+    def update_data(self, current):
+        self.set_data(current)
+        self.autoscale(current)
+
+        self.draw_idle()
+
+    def update_all(self, current):
+        self.set_data(current)
+        self.set_fits(current)
+        self.set_texts(current)
+        self.autoscale(current)
+
+        self.draw_idle()       
 
     def clear_all(self):
         self.ax_planck_res.clear()
@@ -238,8 +253,9 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
     def set_data(self, current):
 
         self.planck_data_pts.set_offsets(np.c_[current.lam, current.planck])
-
         self.wien_data_pts.set_offsets(np.c_[1 / current.lam, current.wien])
+
+    def set_fits(self, current):
 
         self.twocolor_data_pts.set_offsets(
             np.c_[current.lam[current.ind_interval][:-current.pars['delta']], 
@@ -288,46 +304,62 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
     def autoscale(self, current):
         # Custom Autoscales...
         # planck:
-        self.axes[0,0].set_xlim([current.pars['lowerb'] - 100, 
-                                 current.pars['upperb'] + 100]) 
+        if current._fitted:
+            self.axes[0,0].set_xlim([current.pars['lowerb'] - 100, 
+                                 current.pars['upperb'] + 100])
 
-        self.axes[0,0].set_ylim([np.min( current.planck_fit - \
+            self.axes[0,0].set_ylim([np.min( current.planck_fit - \
                                          0.4*np.ptp(current.planck_fit)),
                                          np.max( current.planck_fit + \
                                          0.5*np.ptp(current.planck_fit))])
+            self.ax_planck_res.set_ylim([
+                np.min( current.planck_residuals ),
+                np.max( current.planck_residuals ) ])
 
-        self.ax_planck_res.set_ylim([
-            np.min( current.planck_residuals ),
-            np.max( current.planck_residuals ) ])
+            # wien:
+            self.axes[0,1].set_xlim(
+                [np.min( 1 / current.lam[current.ind_interval] - 0.0002 ),
+                 np.max( 1 / current.lam[current.ind_interval] + 0.0002 )])
+    
+            self.axes[0,1].set_ylim([np.min( current.wien_fit - \
+                                             0.5*np.ptp(current.wien_fit)),
+                                             np.max( current.wien_fit + \
+                                             0.5*np.ptp(current.wien_fit))])
+    
+            self.ax_wien_res.set_ylim([
+                np.nanmin( current.wien_residuals ),
+                np.nanmax( current.wien_residuals )])
+    
+            # 2color:
+            self.axes[1,0].set_xlim([current.pars['lowerb'] - 20,
+                                     current.pars['upperb'] + 10])
+            self.axes[1,0].set_ylim(
+                [current.T_twocolor - 5 * current.T_std_twocolor, 
+                 current.T_twocolor + 5 * current.T_std_twocolor])
+    
+            # histogram
+            self.axes[1,1].set_xlim(
+                [current.T_twocolor - 5 * current.T_std_twocolor,
+                 current.T_twocolor + 5 * current.T_std_twocolor])
+    
+            self.axes[1,1].set_ylim([0, 1.4*np.max(self.hist_counts)])
 
-        # wien:
-        self.axes[0,1].set_xlim(
-            [np.min( 1 / current.lam[current.ind_interval] - 0.0002 ),
-             np.max( 1 / current.lam[current.ind_interval] + 0.0002 )])
 
-        self.axes[0,1].set_ylim([np.min( current.wien_fit - \
-                                         0.5*np.ptp(current.wien_fit)),
-                                         np.max( current.wien_fit + \
-                                         0.5*np.ptp(current.wien_fit))])
+        else:
+            # Planck:
+            self.axes[0,0].set_xlim([np.min(current.lam)-100, 
+                                     np.max(current.lam)+100 ])
+            self.axes[0,0].set_ylim([np.min(current.planck),   
+                                     np.max(current.planck)])
 
-        self.ax_wien_res.set_ylim([
-            np.nanmin( current.wien_residuals ),
-            np.nanmax( current.wien_residuals )])
-
-        # 2color:
-        self.axes[1,0].set_xlim([current.pars['lowerb'] - 20,
-                                 current.pars['upperb'] + 10])
-        self.axes[1,0].set_ylim(
-            [current.T_twocolor - 5 * current.T_std_twocolor, 
-             current.T_twocolor + 5 * current.T_std_twocolor])
-
-        # histogram
-        self.axes[1,1].set_xlim(
-            [current.T_twocolor - 5 * current.T_std_twocolor,
-             current.T_twocolor + 5 * current.T_std_twocolor])
-
-        self.axes[1,1].set_ylim([0, 1.4*np.max(self.hist_counts)])
-
+            # Wien:
+            self.axes[0,1].set_xlim(
+                [np.min( 1 / current.lam - 0.0002 ),
+                 np.max( 1 / current.lam + 0.0002 )])
+    
+            self.axes[0,1].set_ylim([np.min(current.wien), 
+                                     np.max(current.wien)])
+            
 
 class SinglePlotCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):

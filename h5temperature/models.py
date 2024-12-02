@@ -53,6 +53,9 @@ class BlackBodySpec():
                          delta  = None,
                          usebg  = None)
 
+        # fitted flag 
+        self._fitted = False
+
         self.bg = 0
         self.ind_interval = None
 
@@ -78,6 +81,10 @@ class BlackBodySpec():
                                            self.lam <= self.pars['upperb'])
 
     def eval_twocolor(self):
+
+        if not self._fitted:
+            self._fitted = True
+
         # calculate 2color 
         self.twocolor = Ph.temp2color(self.lam[self.ind_interval], 
                                       self.wien[self.ind_interval], 
@@ -89,6 +96,10 @@ class BlackBodySpec():
         
 
     def eval_wien_fit(self):
+
+        if not self._fitted:
+            self._fitted = True
+
         # in cases of I-bg < 0, the wien fct returns np.nan:
         # we keep only valid data for the fit.
         keepind = np.isfinite(self.wien[self.ind_interval])
@@ -107,6 +118,10 @@ class BlackBodySpec():
        
 
     def eval_planck_fit(self):
+
+        if not self._fitted:
+            self._fitted = True
+
         # initial temperature value for the fit...
         if self.T_wien:
             Tguess = self.T_wien
