@@ -1,4 +1,4 @@
-#   Copyright (C) 2023-2024 Alexis Forestier (alforestier@gmail.com)
+#   Copyright (C) 2023-2025 Alexis Forestier (alforestier@gmail.com)
 #   
 #   This file is part of h5temperature.
 #   

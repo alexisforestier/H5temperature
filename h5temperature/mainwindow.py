@@ -1,4 +1,4 @@
-#   Copyright (C) 2023-2024 Alexis Forestier (alforestier@gmail.com)
+#   Copyright (C) 2023-2025 Alexis Forestier (alforestier@gmail.com)
 #   
 #   This file is part of h5temperature.
 #   
@@ -199,9 +199,11 @@ class MainWindow(QWidget):
 
         self.exportraw_button.clicked.connect(self.export_current_raw)
 
-        self.dataset_tree.currentItemChanged.connect(self.update_plots)
-
-        self.fit_button.clicked.connect(self.update)
+        self.dataset_tree.currentItemChanged.connect(
+            lambda: self.update('dataset_tree'))
+        self.fit_button.clicked.connect(
+            lambda: self.update('fit_button'))
+        
         self.batch_fit_button.clicked.connect(self.batch_fit)
 
         self.choosedelta_button.clicked.connect(self.choose_delta)
@@ -403,7 +405,7 @@ class MainWindow(QWidget):
     @pyqtSlot(int)
     def update_delta(self, x):
         self.delta_spinbox.setValue(x)
-        self.update()
+        self.update('choose_delta')
 
     @pyqtSlot()
     def choose_delta(self):
@@ -439,45 +441,47 @@ class MainWindow(QWidget):
         self.choosedelta_win.clear_canvas()
 
     def eval_fits(self, current):
-        # eval all quantities for a given spectrum
-        try:
-            # start with wien to get a reasonable initial value for planck:
-            current.eval_wien_fit()
-            current.eval_planck_fit()            
 
-            # Refit wien again, accounting for bg obtained in Planck:
-            if current.pars['usebg']:
+        if not current.pars == self.pars:
+            current.set_pars(self.pars)
+            # eval all quantities for a given spectrum
+            try:
+                # start with wien to get a reasonable initial value for planck:
                 current.eval_wien_fit()
-            # eval two color at the end in all cases
-            current.eval_twocolor()
+                current.eval_planck_fit()            
+    
+                # Refit wien again, accounting for bg obtained in Planck:
+                if current.pars['usebg']:
+                    current.eval_wien_fit()
+                # eval two color at the end in all cases
+                current.eval_twocolor()
+    
+            except Exception as e:
+                QMessageBox.critical(self, 'Error', str(e))
 
-        except Exception as e:
-            QMessageBox.critical(self, 'Error', str(e))
 
-
-    @pyqtSlot()
-    def update_plots(self):
+    @pyqtSlot(str)
+    def update(self, called_from):
 
         item = self.dataset_tree.currentItem()
         current = self.get_data_from_tree_item(item)
 
+        # clear all plots and fit results table:
+        self.canvas.clear_all()
+        self.results_table.clearContents()
+
         if current:
+            # in all cases we plot data:
+            self.canvas.update_data(current)
+
+            # if autofit, or not called from fit button/delta_changed
+            # we do the fit:
+            if self.autofit or (not called_from == 'dataset_tree'):
+                self.eval_fits(current)
+
             if current._fitted:
                 self.canvas.update_fits(current)
                 self.results_table.set_values(current)
-            else:
-                self.canvas.clear_all()
-                self.results_table.clearContents()
-                if self.autofit:
-                    # if current was never fitted current.pars is None 
-                    if not current.pars == self.pars:
-                        current.set_pars(self.pars)
-                        self.eval_fits(current)
-                        self.canvas.update_fits(current)        
-                        self.results_table.set_values(current)
-
-            # in all cases we plot data
-            self.canvas.update_data(current)
 
             # item.text(0) from another group may interfere ? I ignore that for now:                
             # current.name is always the parent name in the group, this may change
@@ -488,7 +492,7 @@ class MainWindow(QWidget):
 
         # no item selected:
         else:
-            # empty if no data e.g. main item of a serie
+            #empty if no data e.g. main item of a serie
             self.canvas.clear_all()
             self.results_table.clearContents()
         # this should update the choose delta window if it stays open!
@@ -497,6 +501,8 @@ class MainWindow(QWidget):
 #        if self.choosedelta_win.isVisible():
 #            self.choose_delta()
 
+#    @pyqtSlot()
+#    def update_fit():
 
     @pyqtSlot()
     def batch_fit(self):
@@ -529,9 +535,7 @@ class MainWindow(QWidget):
                 # fit all subitems !
                 # if parameters have changed then we fit again
                 # if current was never fitted current.pars is None 
-                if not current.pars == self.pars:
-                    current.set_pars(self.pars)
-                    self.eval_fits(current)
+                self.eval_fits(current)
 
             self.batch = TemperaturesBatch(self.data[parent_key])
             self.batch.extract_data()

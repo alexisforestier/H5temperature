@@ -1,4 +1,4 @@
-#   Copyright (C) 2023-2024 Alexis Forestier (alforestier@gmail.com)
+#   Copyright (C) 2023-2025 Alexis Forestier (alforestier@gmail.com)
 #   
 #   This file is part of h5temperature.
 #   
@@ -132,7 +132,7 @@ class BlackBodySpec():
 
         if self.pars['usebg']:
                        # eps     ,   temp ,        bg
-            p0      =  (eps_guess,   Tguess,        1)
+            p0      =  (eps_guess,   Tguess,        0)
             pbounds = ((        0,        0,        0),
                        (  +np.inf,      2e4,  +np.inf))
         else:
