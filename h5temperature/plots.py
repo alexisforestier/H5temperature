@@ -23,7 +23,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from PyQt5.QtWidgets import (QWidget,
                              QVBoxLayout,
                              QHBoxLayout)
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal
 
 
 class FourPlotsCanvas(FigureCanvasQTAgg):
@@ -341,15 +341,14 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
             self.axes[1,1].set_xlim(
                 [current.T_twocolor - 5 * current.T_std_twocolor,
                  current.T_twocolor + 5 * current.T_std_twocolor])
-    
-            self.axes[1,1].set_ylim([0, 1.4*np.max(self.hist_counts)])
 
+            self.axes[1,1].set_ylim([0, 1.4*np.max(self.hist_counts)])
 
         else:
             # Planck:
             self.axes[0,0].set_xlim([np.min(current.lam)-100, 
                                      np.max(current.lam)+100 ])
-            self.axes[0,0].set_ylim([np.min(current.planck),   
+            self.axes[0,0].set_ylim([np.min(current.planck),
                                      np.max(current.planck)])
 
             # Wien:
@@ -357,9 +356,9 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
                 [np.min( 1 / current.lam - 0.0002 ),
                  np.max( 1 / current.lam + 0.0002 )])
     
-            self.axes[0,1].set_ylim([np.min(current.wien), 
+            self.axes[0,1].set_ylim([np.min(current.wien),
                                      np.max(current.wien)])
-            
+
 
 class SinglePlotCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
@@ -374,8 +373,8 @@ class ChooseDeltaWindow(QWidget):
 
     delta_changed = pyqtSignal(int)
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent, Qt.Window)
 
         self.resize(500,400)
 
@@ -441,8 +440,8 @@ class ChooseDeltaWindow(QWidget):
 
 class BatchWindow(QWidget):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent, Qt.Window)
 
         self.resize(800, 300)
 

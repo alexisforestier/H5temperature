@@ -167,8 +167,9 @@ class MainWindow(QWidget):
         center_groupbox.setLayout(plot_layout)
 
         # setup other windows
-        self.choosedelta_win = ChooseDeltaWindow()
-        self.batch_win = BatchWindow()
+        # self is passed as parent window
+        self.choosedelta_win = ChooseDeltaWindow(self)
+        self.batch_win = BatchWindow(self)
 
         # about button
         self.about_button = QPushButton('About')
@@ -470,10 +471,7 @@ class MainWindow(QWidget):
         self.canvas.clear_all()
         self.results_table.clearContents()
 
-        if current:
-            # in all cases we plot data:
-            self.canvas.update_data(current)
-
+        if current:            
             # if autofit, or not called from fit button/delta_changed
             # we do the fit:
             if self.autofit or (not called_from == 'dataset_tree'):
@@ -483,6 +481,10 @@ class MainWindow(QWidget):
                 self.canvas.update_fits(current)
                 self.results_table.set_values(current)
 
+            # in all cases we plot data:
+            self.canvas.update_data(current)
+            
+            # propagate change to the batch widget:
             # item.text(0) from another group may interfere ? I ignore that for now:                
             # current.name is always the parent name in the group, this may change
             # or a class for groups ?  
