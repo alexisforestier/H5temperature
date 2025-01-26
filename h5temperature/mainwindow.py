@@ -428,6 +428,8 @@ class MainWindow(QWidget):
     
             if not self.choosedelta_win.isVisible():
                 self.choosedelta_win.show()
+            else:
+                self.choosedelta_win.activateWindow()
 
     @pyqtSlot()
     def clear_all(self):
@@ -510,6 +512,8 @@ class MainWindow(QWidget):
     def batch_fit(self):
         if not self.batch_win.isVisible():
             self.batch_win.show()
+        else:
+            self.batch_win.activateWindow()
 
         item = self.dataset_tree.currentItem()
 
@@ -535,8 +539,6 @@ class MainWindow(QWidget):
                 current = self.data[parent_key][key]
 
                 # fit all subitems !
-                # if parameters have changed then we fit again
-                # if current was never fitted current.pars is None 
                 self.eval_fits(current)
 
             self.batch = TemperaturesBatch(self.data[parent_key])
@@ -557,7 +559,7 @@ class MainWindow(QWidget):
                '<a href=\"https://doi.org/10.1080/08957950412331331718\">' \
                'Benedetti and Loubeyre (2004), ' \
                'High Pressure Research, 24:4, 423-445</a> <br><br>' \
-               'Copyright 2023-2024 Alexis Forestier ' \
+               'Copyright 2023-2025 Alexis Forestier ' \
                '(alforestier@gmail.com) <br><br>' \
                '<small> <small> <small>' \
                'h5temperature is free software: you can redistribute ' \

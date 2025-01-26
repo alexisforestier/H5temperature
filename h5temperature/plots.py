@@ -56,8 +56,10 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
         self.axes[0,1].set_frame_on(False)
 
     def update_fits(self, current):
-#        self.set_data(current)
+#        self.set_data(current)   # already called in mainwindow through 
+                                  # updatedata 
         self.set_fits(current)
+        self.set_fitslim(current)
         self.set_texts(current)
         self.autoscale(current)
 
@@ -210,6 +212,30 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
                                       zorder=7,
                                       label='mean')            
 
+        self.planck_lowlim_line = self.axes[0,0].axvline(
+                                      color='g',
+                                      linewidth=0.8,
+                                      linestyle='solid',
+                                      zorder=3)
+
+        self.planck_highlim_line = self.axes[0,0].axvline(
+                                      color='g',
+                                      linewidth=0.8,
+                                      linestyle='solid',
+                                      zorder=3)
+
+        self.wien_lowlim_line = self.axes[0,1].axvline(
+                                      color='g',
+                                      linewidth=0.8,
+                                      linestyle='solid',
+                                      zorder=3)
+
+        self.wien_highlim_line = self.axes[0,1].axvline(
+                                      color='g',
+                                      linewidth=0.8,
+                                      linestyle='solid',
+                                      zorder=3)
+
     def create_texts(self):
         self.planck_text = self.axes[0,0].text(0.05, 0.65, 
                             '',
@@ -300,6 +326,21 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
                                             current.wien_residuals])
 
         self.twocolor_line.set_ydata([current.T_twocolor, current.T_twocolor])
+
+    def set_fitslim(self, current):
+
+        self.planck_lowlim_line.set_xdata(
+                    [current.pars['lowerb'], current.pars['lowerb']])
+
+        self.planck_highlim_line.set_xdata(
+                    [current.pars['upperb'], current.pars['upperb']])
+
+        self.wien_lowlim_line.set_xdata(
+                    [1/current.pars['upperb'], 1/current.pars['upperb']])
+
+        self.wien_highlim_line.set_xdata(
+                    [1/current.pars['lowerb'], 1/current.pars['lowerb']])
+
 
     def autoscale(self, current):
         # Custom Autoscales...
