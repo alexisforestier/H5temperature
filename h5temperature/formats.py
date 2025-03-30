@@ -16,8 +16,10 @@
 #   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
 
+import os
 import numpy as np
 import datetime
+import csv
 
 def get_data_from_h5group(group):
 
@@ -49,14 +51,57 @@ def get_data_from_h5group(group):
     return out
 
 def get_data_from_ascii(path):
-    
-    # Simplest implementation
-    # This should be improved with a 'parser' for headers, separators...etc
 
-    darr = np.loadtxt(path)
+    # Should be adapted for loading several files at a time
+    darr = customparse_file2data(path)
+    
+    try:
+        time = datetime.datetime.fromtimestamp(os.path.getmtime(path))
+    except:
+        time = None
+
     lam = darr[:,0]
     planck = darr[:,1]
 
-    out = dict(lam=lam, planck=planck, time=None)
-    
+    # arrange data as in h5 mode:
+    out = dict(lam=lam, planck=planck, time=time)
     return out
+
+def customparse_file2data(f):
+    with open(f, 'r') as file:
+        # Skip initial lines to determine the delimiter
+        initial_skip = 100  
+        for _ in range(initial_skip):
+            file.readline()
+
+        # Read a chunk from the middle of the file to determine the delimiter
+        chunk_size = 2000
+        chunk = file.read(chunk_size)
+        file.seek(0)  # Reset file pointer to the beginning
+
+        delimiter = csv.Sniffer().sniff(chunk).delimiter
+
+        count = 0
+        data_lines = []
+        # Process the file line by line to determine header
+        # When it will reach footer, it will be exluded too
+        for line in file:
+            sp = line.strip().split(delimiter)
+            if len(sp) < 2:
+                count += 1
+            else:
+                try:
+                    _ = list(map(float, sp))
+                    data_lines.append(line)
+                except ValueError:
+                    count += 1
+
+        #print('delimiter : {}'.format(delimiter))
+        #print('count : {}'.format(count))
+
+        # Convert data_lines to a numpy array
+        data = np.array([line.strip().split(delimiter) for line in data_lines], 
+            dtype=np.float64)
+
+        #print('length: {}'.format(len(data)))
+        return data[:, :2]
