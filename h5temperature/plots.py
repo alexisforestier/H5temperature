@@ -18,6 +18,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from PyQt5.QtWidgets import (QWidget,
@@ -236,6 +237,9 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
                                       linestyle='solid',
                                       zorder=3)
 
+        self.saturation_rect = patches.Rectangle((0.5, 0.5), 0, 0, 
+            linewidth=0, edgecolor='None', facecolor='r', alpha=0.4)
+
     def create_texts(self):
         self.planck_text = self.axes[0,0].text(0.05, 0.65, 
                             '',
@@ -280,6 +284,21 @@ class FourPlotsCanvas(FigureCanvasQTAgg):
 
         self.planck_data_pts.set_offsets(np.c_[current.lam, current.planck])
         self.wien_data_pts.set_offsets(np.c_[1 / current.lam, current.wien])
+
+        if current._saturated:
+            rect_xmin = np.min( current.lam[current.saturated_ind] )
+            rect_ymin = np.min( current.planck[current.saturated_ind] )
+            rect_w = np.ptp( current.lam[current.saturated_ind] )
+            rect_h = np.ptp( current.planck[current.saturated_ind] )
+            self.saturation_rect.set_xy((rect_xmin, rect_ymin))
+            self.saturation_rect.set_width(rect_w)
+            self.saturation_rect.set_height(rect_h)
+
+            self.axes[0,0].add_patch(self.saturation_rect)
+
+        else:
+            self.saturation_rect.set_width(0)
+            self.saturation_rect.set_height(0)            
 
     def set_fits(self, current):
 

@@ -37,14 +37,16 @@ def get_data_from_h5group(group):
 
     lam = np.array(group['measurement/spectrum_lambdas']).squeeze()
     planck = np.array(group['measurement/planck_data']).squeeze()
+    # max_data is used to check for saturation in BlackBodySpec constructor:
+    max_data = np.array(group['measurement/max_data']).squeeze()
 
     if planck.ndim == 1:
-        out = dict(lam=lam, planck=planck, time=time)
+        out = dict(lam=lam, planck=planck, max_data=max_data, time=time)
     # manage two dimensional data and return a list of dict:
     elif planck.ndim == 2:
         out = []
-        for l,p in zip(lam, planck):
-            out.append( dict(lam=l, planck=p, time=time) )
+        for l, p, m in zip(lam, planck, max_data):
+            out.append( dict(lam=l, planck=p, max_data=m, time=time) )
     else: 
         raise ValueError("Array has too many dimensions. " 
                          "Expected 1 or 2 dimensions")
@@ -52,9 +54,8 @@ def get_data_from_h5group(group):
 
 def get_data_from_ascii(path):
 
-    # Should be adapted for loading several files at a time
+    # Should be adapted for loading several files at a time ?
     darr = customparse_file2data(path)
-    
     try:
         time = datetime.datetime.fromtimestamp(os.path.getmtime(path))
     except:
