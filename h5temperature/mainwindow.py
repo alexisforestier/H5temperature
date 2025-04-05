@@ -15,6 +15,7 @@
 #   You should have received a copy of the GNU General Public License 
 #   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
+import os
 import numpy as np
 import h5py
 from PyQt5.QtWidgets import (QApplication,
@@ -35,6 +36,7 @@ from PyQt5.QtWidgets import (QApplication,
                              QMessageBox)
 
 from PyQt5.QtCore import Qt, pyqtSlot, QPoint
+from PyQt5.QtGui import QIcon
 
 from h5temperature import __version__
 import h5temperature.physics as Ph 
@@ -51,6 +53,11 @@ class MainWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle(f'h5temperature {__version__}')
+        # constructs the full path to "resources"
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         'resources/h5temp.png')
+        self.setWindowIcon(QIcon(icon_path))
+
         self.resize(1600,900)
 
         # data stored in MainWindow
