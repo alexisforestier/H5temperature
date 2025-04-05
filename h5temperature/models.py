@@ -26,12 +26,13 @@ import h5temperature.physics as Ph
 
 
 class BlackBodySpec():
-    def __init__(self, name, lam, planck, time=None):
+    def __init__(self, name, lam, planck, max_data=None, time=None):
 
         # reordering...
         ordind = np.argsort(lam)
         self.lam = lam[ordind]
         self.planck = planck[ordind]
+        max_data = max_data[ordind]
         
         self.name = name
         self.time = time
@@ -55,6 +56,15 @@ class BlackBodySpec():
 
         # fitted flag 
         self._fitted = False
+
+        # check for saturation:
+        if max_data is not None:
+            self.saturated_ind = np.where(max_data >= (2**16 - 1))[0]
+            self._saturated = (len(self.saturated_ind) > 0)
+        else:
+            # absence of raw data to check
+            self.saturated_ind = np.array([])
+            self._saturated = False
 
         self.bg = 0
         self.ind_interval = None
