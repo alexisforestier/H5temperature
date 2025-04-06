@@ -11,5 +11,5 @@ echo source  %source%
 echo dest  %dest%
 xcopy "%source%" "%dest%" /E /I /Y
 ren .\run.dist\run.exe h5temperature.exe
-rename ".\run.dist" "h5temperature"
+rename ".\run.dist" "h5temperature.dist"
 PAUSE
