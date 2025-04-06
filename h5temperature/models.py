@@ -173,20 +173,31 @@ class BlackBodySpec():
 
 class TemperaturesBatch():
     def __init__(self, measurements):
+        # measurements is now a simple list.
         self.measurements = measurements
         self.n_points = len(self.measurements)
 
+        self.keys = [0 for _ in range(self.n_points)]
+
         self.frames = np.empty(self.n_points)
-        # force str (U = unicode) for keys
-        self.keys = np.empty(self.n_points, dtype='U')
         self.plancks = np.empty(self.n_points)
         self.wiens = np.empty(self.n_points)
         self.stddevs = np.empty(self.n_points)
 
-    def extract_data(self):
-        for i, (key, meas) in enumerate(self.measurements.items()):
+        self.extract_all()
+
+    # as batch fit calls the constructor it will reinitiate 
+    # self.keys and everything else
+    # otherwise if extract all is called, I have to overwrite self.keys()
+    # but the length remains the same. Hence I do not use append.
+    def extract_all(self):
+        # populate everything
+        for i, meas in enumerate(self.measurements):
+            # keys is a list
+            self.keys[i] = meas.name
+
+            # np.arrays
             self.frames[i] = i
-            self.keys[i] = key
             self.plancks[i] = meas.T_planck
             self.wiens[i] = meas.T_wien
             self.stddevs[i] = meas.T_std_twocolor

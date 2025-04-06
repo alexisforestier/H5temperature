@@ -499,11 +499,10 @@ class ChooseDeltaWindow(QWidget):
 
 
 class BatchWindow(QWidget):
-
     def __init__(self, parent):
         super().__init__(parent, Qt.Window)
 
-        self.resize(800, 300)
+        self.resize(800, 600)
 
         self.setWindowTitle('h5temperature batch')
         self.setStyleSheet("background-color: white")

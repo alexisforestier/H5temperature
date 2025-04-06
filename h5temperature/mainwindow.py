@@ -36,7 +36,7 @@ from PyQt5.QtWidgets import (QApplication,
                              QMessageBox)
 
 from PyQt5.QtCore import Qt, pyqtSlot, QPoint
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QPixmap
 
 from h5temperature import __version__
 import h5temperature.physics as Ph 
@@ -54,16 +54,17 @@ class MainWindow(QWidget):
 
         self.setWindowTitle(f'h5temperature {__version__}')
         # constructs the full path to "resources"
-        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+        self.icon_path = os.path.join(os.path.dirname(
+                                os.path.abspath(__file__)),
                          'resources/h5temp.png')
-        self.setWindowIcon(QIcon(icon_path))
+        self.setWindowIcon(QIcon(self.icon_path))
 
         self.resize(1600,900)
 
         # data stored in MainWindow
         self.filepath = str()
         self.data = dict()
-        self.batch = None
+        self.batch = None   # No batch by default
         self.autofit = True # <- automatic fit or not
 
         # current parameters in the mainwindow and their default values
@@ -137,6 +138,12 @@ class MainWindow(QWidget):
         self.fit_button = QPushButton('Fit')
         self.batch_fit_button = QPushButton('Batch fit')
 
+        self.batch_menu = QMenu(self)
+        self.batch_menu.addAction(QAction("Current group (default)", self))
+        # not implemented yet:
+#        self.batch_menu.addAction(QAction("Select", self))
+        self.batch_menu.addAction(QAction("All", self))
+
         fitparam_form = QFormLayout()
         fitparam_form.addRow('Lower limit (nm):', self.lowerbound_spinbox)
         fitparam_form.addRow('Upper limit (nm):', self.upperbound_spinbox)
@@ -199,7 +206,9 @@ class MainWindow(QWidget):
 
         self.load_button.clicked.connect(self.load_h5file)
         self.load_button.setContextMenuPolicy(Qt.CustomContextMenu)       
-        self.load_button.customContextMenuRequested.connect(self.show_load_menu)
+        self.load_button.customContextMenuRequested.connect(
+                lambda pos: self.show_any_menu(pos, self.load_button, 
+                                                   self.load_menu))
 
         self.reload_button.clicked.connect(self.reload_h5file)
         self.clear_button.clicked.connect(self.clear_all)
@@ -212,7 +221,14 @@ class MainWindow(QWidget):
         self.fit_button.clicked.connect(
             lambda: self.update('fit_button'))
         
-        self.batch_fit_button.clicked.connect(self.batch_fit)
+        # default behaviour:
+        self.batch_fit_button.clicked.connect(
+            lambda: self.batch_fit(QAction("Current group (default)", self)))
+
+        self.batch_fit_button.setContextMenuPolicy(Qt.CustomContextMenu)       
+        self.batch_fit_button.customContextMenuRequested.connect(
+                lambda pos: self.show_any_menu(pos, self.batch_fit_button, 
+                                                   self.batch_menu))
 
         self.choosedelta_button.clicked.connect(self.choose_delta)
         self.choosedelta_win.delta_changed.connect(self.update_delta)
@@ -236,6 +252,7 @@ class MainWindow(QWidget):
 #        self.usebg_checkbox.stateChanged.connect(self.update)
 
         self.load_menu.triggered.connect(self.load_menu_slot)
+        self.batch_menu.triggered.connect(self.batch_fit)
 
     @pyqtSlot(QAction)
     def load_menu_slot(self, action):
@@ -244,9 +261,9 @@ class MainWindow(QWidget):
         elif action.text() == 'Load ASCII':
             self.load_ascii()
 
-    @pyqtSlot(QPoint)
-    def show_load_menu(self, pos):
-        self.load_menu.exec_(self.load_button.mapToGlobal(pos))
+    @pyqtSlot(QPoint, QWidget, QMenu)
+    def show_any_menu(self, pos, clicked_widget, menu):
+        menu.exec_(clicked_widget.mapToGlobal(pos))
 
     @pyqtSlot()
     def load_h5file(self):
@@ -288,7 +305,10 @@ class MainWindow(QWidget):
                                 self.data[nam] = dict()
                                 for i, di in enumerate(d):
                                     k = '{}'.format(i)
-                                    self.data[nam][k] = BlackBodySpec(nam, **di)
+                                    subnam = ''.join([nam, '[{}]'.format(i)])
+                                    # use names for referencing
+                                    self.data[nam][subnam] = \
+                                                BlackBodySpec(subnam, **di)
 
     @pyqtSlot()
     def load_ascii(self):
@@ -334,7 +354,8 @@ class MainWindow(QWidget):
             # this may one day be a class method?
             def get_timestamp(k, elem):
                 if isinstance(elem, dict):
-                    return self.data[k]['0'].timestamp
+                    firstelem = self.data[k][list(self.data[k].keys())[0]]
+                    return firstelem.timestamp
                 else:
                     return self.data[k].timestamp
 
@@ -494,11 +515,10 @@ class MainWindow(QWidget):
             self.canvas.update_data(current)
             
             # propagate change to the batch widget:
-            # item.text(0) from another group may interfere ? I ignore that for now:                
             # current.name is always the parent name in the group, this may change
             # or a class for groups ?  
             if self.batch and (item.text(0) in self.batch.keys):
-                self.batch.extract_data()
+                self.batch.extract_all()
                 self.batch_win.replot(self.batch)
 
         # no item selected:
@@ -515,47 +535,84 @@ class MainWindow(QWidget):
 #    @pyqtSlot()
 #    def update_fit():
 
-    @pyqtSlot()
-    def batch_fit(self):
+    @pyqtSlot(QAction)
+    def batch_fit(self, action):
+        # show the batch window        
         if not self.batch_win.isVisible():
             self.batch_win.show()
         else:
             self.batch_win.activateWindow()
 
-        item = self.dataset_tree.currentItem()
+        keys_to_fit = dict()
 
         # Group mode:
-        # item is a parent:
-        if item.childCount() > 0:
-            parent_item = item
-            nchilds = item.childCount()
-            item.setExpanded(True)
-        # item is a child:
-        elif item.parent():
-            parent_item = item.parent()
-            nchilds = parent_item.childCount()
-        # No Batch possible, nchilds = 0:
-        else:
-            nchilds = item.childCount()
+        if action.text() == "Current group (default)":
+            item = self.dataset_tree.currentItem()
+            # item is the parent:
+            if item.childCount() > 0:
+                parent_item = item
+                parent_item.setExpanded(True)
+            # item is a child:
+            elif item.parent():
+                parent_item = item.parent()
+                nchilds = parent_item.childCount()
+            # No Group Batch possible
+            else:
+                parent_item = None
 
-        if nchilds > 0:
-            parent_key = parent_item.text(0)
-            for i in range(nchilds):
-                subitem = parent_item.child(i)
-                key = subitem.text(0)
-                current = self.data[parent_key][key]
+            if parent_item:
+                parent_item_key = parent_item.text(0)
+                nchilds = parent_item.childCount()
 
-                # fit all subitems !
-                self.eval_fits(current)
+                keys_to_fit[parent_item_key] = list()
 
-            self.batch = TemperaturesBatch(self.data[parent_key])
-            self.batch.extract_data()
+                for i in range(nchilds):
+                    child_key = parent_item.child(i).text(0)
+                    keys_to_fit[parent_item_key].append(child_key)
 
+        elif action.text() == "All":
+            # loop over items of the dataset_tree as a tip to maintain ordering
+            # not ideal but should works
+            ntoplevel = self.dataset_tree.topLevelItemCount()
+
+            for toplevel_ind in range(ntoplevel):
+                toplevel_item = self.dataset_tree.topLevelItem(toplevel_ind)
+                toplevel_item_key = toplevel_item.text(0)
+                # group
+                if toplevel_item.childCount() > 0:
+                    nchilds = toplevel_item.childCount()
+                    keys_to_fit[toplevel_item_key] = list()
+
+                    for i in range(nchilds):
+                        child_key = toplevel_item.child(i).text(0)
+                        keys_to_fit[toplevel_item_key].append(child_key)
+                else:
+                    # single measurement
+                    keys_to_fit[toplevel_item_key] = toplevel_item_key
+
+        # eval all fits and create batch_data from keys_to_fit
+        # General to all modes
+        if len(keys_to_fit) > 0:
+            batch_data = list()
+            for k, subks in keys_to_fit.items():
+                # single measurement case:
+                if isinstance(subks, str):
+                    current = self.data[k]
+                    self.eval_fits(current)
+                    batch_data.append(current)
+                # group case:
+                else:
+                    for subk in subks:
+                        current = self.data[k][subk]
+                        # fit all subitems !
+                        self.eval_fits(current)
+                        batch_data.append(current)
+
+            self.batch = TemperaturesBatch(batch_data)
             self.batch_win.replot(self.batch)
-
         else:
-            pass
-
+            QMessageBox.warning(self, 'Warning',
+            'Nothing to batch fit') 
 
     @pyqtSlot()
     def show_about(self):
@@ -585,8 +642,14 @@ class MainWindow(QWidget):
                'https://www.gnu.org/licenses/</a>.' \
                '</small> </small> </small>' \
                '</center>' 
+
+        logo = QPixmap(self.icon_path).scaled(128,128,Qt.KeepAspectRatio, 
+                            Qt.SmoothTransformation)
+
         msg = QMessageBox(self)
         msg.setWindowTitle("About h5temperature")
         msg.setText(text)
+        msg.setIconPixmap(logo)
+
         msg.setStyleSheet("background-color: white;")
         msg.exec_()
