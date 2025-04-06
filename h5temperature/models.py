@@ -170,6 +170,25 @@ class BlackBodySpec():
             self.bg = 0
             self.wien = self.rawwien
 
+    def get_fit_results(self):
+        dt1 = datetime.datetime.fromtimestamp(self.timestamp)
+        dt1_str = dt1.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        out = dict(name = self.name, 
+                   time = dt1_str, 
+                   fitted = self._fitted,
+                   T_planck = self.T_planck, 
+                   T_wien = self.T_wien, 
+                   T_twocolor = self.T_twocolor,
+                   T_std_twocolor = self.T_std_twocolor, 
+                   multiplier_planck = self.eps_planck,
+                   multiplier_wien = self.eps_wien,
+                   background = self.bg, 
+                   lower_bound = self.pars['lowerb'],
+                   upper_bound = self.pars['upperb'],
+                   delta = self.pars['delta'],
+                   usebg = self.pars['usebg'],
+                   saturated = self._saturated)
+        return out
 
 class TemperaturesBatch():
     def __init__(self, measurements):

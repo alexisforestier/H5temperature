@@ -151,6 +151,8 @@ class MainWindow(QWidget):
         
         self.results_table = SingleFitResultsTable()
 
+        self.export_results_button = QPushButton('Export all results')
+
         fit_layout = QVBoxLayout()
         fit_layout.addLayout(fitparam_form)
         fit_layout.addWidget(self.usebg_checkbox)
@@ -159,6 +161,7 @@ class MainWindow(QWidget):
         fit_layout.addWidget(self.fit_button)
         fit_layout.addWidget(self.batch_fit_button)
         fit_layout.addWidget(self.results_table)
+        fit_layout.addWidget(self.export_results_button)
         fit_layout.addStretch()
 
         right_groupbox = QGroupBox('Fitting')
@@ -245,6 +248,8 @@ class MainWindow(QWidget):
                     self.usebg_checkbox.isChecked()))
         self.autofit_checkbox.stateChanged.connect(
                 lambda b: setattr(self, 'autofit', bool(b)))
+
+        self.export_results_button.clicked.connect(self.export_results)
 
 #        self.lowerbound_spinbox.editingFinished.connect(self.update)
 #        self.upperbound_spinbox.editingFinished.connect(self.update)
@@ -548,35 +553,36 @@ class MainWindow(QWidget):
         # Group mode:
         if action.text() == "Current group (default)":
             item = self.dataset_tree.currentItem()
-            # item is the parent:
-            if item.childCount() > 0:
-                parent_item = item
-                parent_item.setExpanded(True)
-            # item is a child:
-            elif item.parent():
-                parent_item = item.parent()
-                nchilds = parent_item.childCount()
-            # No Group Batch possible
-            else:
-                parent_item = None
-
-            if parent_item:
-                parent_item_key = parent_item.text(0)
-                nchilds = parent_item.childCount()
-
-                keys_to_fit[parent_item_key] = list()
-
-                for i in range(nchilds):
-                    child_key = parent_item.child(i).text(0)
-                    keys_to_fit[parent_item_key].append(child_key)
+            if item:
+                # item is the parent:
+                if item.childCount() > 0:
+                    parent_item = item
+                    parent_item.setExpanded(True)
+                # item is a child:
+                elif item.parent():
+                    parent_item = item.parent()
+                    nchilds = parent_item.childCount()
+                # No Group Batch possible
+                else:
+                    parent_item = None
+    
+                if parent_item:
+                    parent_item_key = parent_item.text(0)
+                    nchilds = parent_item.childCount()
+    
+                    keys_to_fit[parent_item_key] = list()
+    
+                    for i in range(nchilds):
+                        child_key = parent_item.child(i).text(0)
+                        keys_to_fit[parent_item_key].append(child_key)
 
         elif action.text() == "All":
             # loop over items of the dataset_tree as a tip to maintain ordering
-            # not ideal but should works
+            # not ideal but works
             ntoplevel = self.dataset_tree.topLevelItemCount()
 
-            for toplevel_ind in range(ntoplevel):
-                toplevel_item = self.dataset_tree.topLevelItem(toplevel_ind)
+            for ind in range(ntoplevel):
+                toplevel_item = self.dataset_tree.topLevelItem(ind)
                 toplevel_item_key = toplevel_item.text(0)
                 # group
                 if toplevel_item.childCount() > 0:
@@ -611,8 +617,57 @@ class MainWindow(QWidget):
             self.batch = TemperaturesBatch(batch_data)
             self.batch_win.replot(self.batch)
         else:
-            QMessageBox.warning(self, 'Warning',
-            'Nothing to batch fit') 
+            QMessageBox.critical(self, 'Error',
+            'Nothing to process in batch')
+
+    @pyqtSlot()
+    def export_results(self):
+        options =  QFileDialog.Options() 
+        #options = QFileDialog.DontUseNativeDialog
+        # ! Must be checked on different platforms !
+        filename, filetype = \
+            QFileDialog.getSaveFileName(self,
+                                        "h5temperature: Export all results", 
+                                        "",
+                                        "Text File (*.txt);;All Files (*)", 
+                                        options=options)
+        if filename:
+            if filetype == 'Text File (*.txt)':
+                if '.txt' in filename:
+                    pass
+                else:
+                    filename += '.txt'
+
+            lines = []
+            ntoplevel = self.dataset_tree.topLevelItemCount()
+            # loop over items of the dataset_tree as a tip to maintain ordering
+            # not ideal but works
+            for ind in range(ntoplevel):
+                toplevel_item = self.dataset_tree.topLevelItem(ind)
+                toplevel_item_key = toplevel_item.text(0)
+    
+                if toplevel_item.childCount() > 0:
+                    nchilds = toplevel_item.childCount()
+                    for i in range(nchilds):
+                        child_key = toplevel_item.child(i).text(0)
+                        current = self.data[toplevel_item_key][child_key]
+                        lines.append(current.get_fit_results())
+                else:
+                    current = self.data[toplevel_item_key]
+                    lines.append(current.get_fit_results())
+    
+            header = '\t'.join(list(lines[0].keys()))
+            out = [list(l.values()) for l in lines]
+
+            np.savetxt(filename, 
+               out, 
+               delimiter='\t', 
+               comments='',
+               fmt='%s',
+               header=header)
+        else:
+            QMessageBox.critical(self, 'Error',
+            'No file specified')
 
     @pyqtSlot()
     def show_about(self):
