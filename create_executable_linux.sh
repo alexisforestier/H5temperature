@@ -8,3 +8,5 @@ python3 -m pip install nuitka
 python3 -m nuitka --standalone --linux-icon=./h5temperature/resources/h5temp.png --plugin-enable=pyqt5 run.py
 mkdir run.dist/h5temperature
 cp -r h5temperature/resources run.dist/h5temperature
+mv run.dist/run.bin run.dist/h5temperature
+mv run.dist h5temperature
