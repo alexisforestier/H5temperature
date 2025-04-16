@@ -32,7 +32,8 @@ class BlackBodySpec():
         ordind = np.argsort(lam)
         self.lam = lam[ordind]
         self.planck = planck[ordind]
-        max_data = max_data[ordind]
+        if max_data is not None:
+            max_data = max_data[ordind]
         
         self.name = name
         self.time = time
@@ -58,6 +59,7 @@ class BlackBodySpec():
         self._fitted = False
 
         # check for saturation:
+        # satutated_flag
         if max_data is not None:
             self.saturated_ind = np.where(max_data >= (2**16 - 1))[0]
             self._saturated = (len(self.saturated_ind) > 0)
@@ -189,6 +191,64 @@ class BlackBodySpec():
                    usebg = self.pars['usebg'],
                    saturated = self._saturated)
         return out
+
+
+class NestedData():
+    def __init__(self, *args, **kwargs):
+        self._data = dict(*args, **kwargs)
+
+    def __delitem__(self, key):
+        del self._data[key]
+
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def __setitem__(self, key, value):
+        if isinstance(value, BlackBodySpec) or isinstance(value, NestedData):
+            self._data[key] = value
+        else:
+            raise ValueError("Value must be BlackBodySpec or NestedData")
+
+    def __repr__(self):
+        return f"NestedData({self._data})"
+
+    def __len__(self):
+        # len returns the total number of measurements
+        total_length = 0
+        for value in self._data.values():
+            if isinstance(value, NestedData):
+                total_length += len(value)
+            else:
+                total_length += 1
+        return total_length
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def keys(self):
+        return self._data.keys()
+
+    def values(self):
+        return self._data.values()
+
+    def items(self):
+        return self._data.items()
+
+    def flatten(self):
+        flat_dict = {}
+        for key, value in self._data.items():
+            if isinstance(value, NestedData):
+                # Value is a NestedData:
+                flat_dict.update(value.flatten())
+            else:
+                # Value is a BlackBodySpec
+                flat_dict[key] = value
+        return flat_dict
+
+    def find_by_key(self, key):
+        flat_data = self.flatten()
+        return flat_data.get(key, None)
+
 
 class TemperaturesBatch():
     def __init__(self, measurements):

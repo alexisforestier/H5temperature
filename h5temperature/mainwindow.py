@@ -328,13 +328,10 @@ class MainWindow(QWidget):
             options=options)
 
         if self.filepaths:
-            for f in self.filepaths:
-                name = f.split('/')[-1]
-                d1 = get_data_from_ascii(f)
-
-                if name not in self.data:
-                    self.data[name] = BlackBodySpec(name, **d1)
-
+            d = get_data_from_ascii(self.filepaths)
+            for di in d:
+                self.data[di['name']] = BlackBodySpec(**di)
+            
             self.populate_dataset_tree()
 
     def get_data_from_tree_item(self, item):
