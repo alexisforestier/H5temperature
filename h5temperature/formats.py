@@ -119,4 +119,19 @@ if __name__ == '__main__':
     path = "/home/alex/mnt/Data1/ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/hc5078_CDMX18.h5"
     path2= "/home/alex/mnt/Data1/ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/CDMX18_rampe01/CDMX18_rampe01.h5"
 
-    print( read_h5file(path2) )
+    from h5temperature.models import BlackBodySpec, NestedData
+
+    test = read_h5file(path)
+    alldata = NestedData()
+    for k, v in test.items():
+        if isinstance(v, dict):
+            u = BlackBodySpec(k, **v)
+            alldata[k] = u
+        elif isinstance(v, list):
+            thedata = NestedData()
+            for i, vi in enumerate(v):
+                key = f'{k}[{i}]'
+                thedata[key] = BlackBodySpec(k, **vi)
+            alldata[k] = thedata
+    print(alldata.sort_chrono())
+    print(alldata.keys())

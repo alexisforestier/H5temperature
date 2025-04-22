@@ -40,8 +40,9 @@ from PyQt5.QtGui import QIcon, QPixmap
 
 from h5temperature import __version__
 import h5temperature.physics as Ph 
-from h5temperature.formats import get_data_from_h5group, get_data_from_ascii
-from h5temperature.models import BlackBodySpec, TemperaturesBatch
+from h5temperature.formats import (read_h5file, 
+                                   get_data_from_ascii)
+from h5temperature.models import BlackBodySpec, NestedData, TemperaturesBatch
 from h5temperature.plots import (FourPlotsCanvas,
                                  ChooseDeltaWindow,
                                  BatchWindow)
@@ -63,7 +64,7 @@ class MainWindow(QWidget):
 
         # data stored in MainWindow
         self.filepath = str()
-        self.data = dict()
+        self.data = NestedData()
         self.batch = None   # No batch by default
         self.autofit = True # <- automatic fit or not
 
@@ -293,27 +294,18 @@ class MainWindow(QWidget):
             self.populate_dataset_tree()
 
     def get_h5file_content(self):
-        # read h5 file and store in self.data: 
-        with h5py.File(self.filepath, 'r') as file:
-            for nam, group in file.items():
-                if group is not None: 
-                # get temperature measurements only
-                    if 'measurement/T_planck' in group:
-                    # not already loaded only / no identical key!
-                        if nam not in self.data:
-                        # populate data:
-                            d = get_data_from_h5group(group)
-                            if type(d) is dict:
-                                self.data[nam] = BlackBodySpec(nam, **d)
-                            elif type(d) is list:
-                                # if multiple measurements, element is a dict:
-                                self.data[nam] = dict()
-                                for i, di in enumerate(d):
-                                    k = '{}'.format(i)
-                                    subnam = ''.join([nam, '[{}]'.format(i)])
-                                    # use names for referencing
-                                    self.data[nam][subnam] = \
-                                                BlackBodySpec(subnam, **di)
+        # read h5 file and store in self.data:
+        extracted = read_h5file(self.filepath)
+        for k, v in extracted.items():
+            if isinstance(v, dict):
+                self.data[k] = BlackBodySpec(k, **v)
+            elif isinstance(v, list):
+                group = NestedData()
+                for i, vi in enumerate(v):
+                    # how I define the keys in subitems:
+                    key = f'{k}[{i}]'
+                    group[key] = BlackBodySpec(k, **vi)
+                self.data[k] = group
 
     @pyqtSlot()
     def load_ascii(self):
@@ -330,6 +322,7 @@ class MainWindow(QWidget):
         if self.filepaths:
             d = get_data_from_ascii(self.filepaths)
             for di in d:
+                # here di contains name contrarily to h5 case..
                 self.data[di['name']] = BlackBodySpec(**di)
             
             self.populate_dataset_tree()
@@ -352,39 +345,11 @@ class MainWindow(QWidget):
 
     def populate_dataset_tree(self):
         if self.data:
-            # sort datasets in chronological order
-            # this may one day be a class method?
-            def get_timestamp(k, elem):
-                if isinstance(elem, dict):
-                    firstelem = self.data[k][list(self.data[k].keys())[0]]
-                    return firstelem.timestamp
-                else:
-                    return self.data[k].timestamp
-
-            try:
-                names_chrono = sorted(self.data.keys(), 
-                          key = lambda k:  get_timestamp(k, self.data[k]))
-            except:
-                QMessageBox.warning(self, 'Warning',
-                'Problem with measurement dates and times.\n'
-                'Chronological order will NOT be used.')     
-
-                names_chrono = self.data.keys()
-            
-            prev_items = [self.dataset_tree.topLevelItem(x).text(0) 
-                    for x in range(self.dataset_tree.topLevelItemCount())]
-            # new items will always be added at the end
-            # thus data are in chronological order within 
-            # a given h5 loaded but not globally. 
-            for n in names_chrono:
-                if n not in prev_items:
-                    item_n = QTreeWidgetItem(self.dataset_tree, [n])
-                    if type(self.data[n]) is dict:
-                        for k in self.data[n].keys():
-                            item_k = QTreeWidgetItem(item_n, [str(k)])
-                    #test = QTreeWidgetItem(item_n, ["test1","test2"])
-                    #self.dataset_tree.addTopLevelItem(QTreeWidgetItem([n]))
-
+            for k, v in self.data.items():
+                item_k = QTreeWidgetItem(self.dataset_tree, [k])
+                if isinstance(v, NestedData):
+                    for ki, vi in v.items():
+                        item_ki = QTreeWidgetItem(item_k, [ki])
 
     @pyqtSlot()            
     def export_current_raw(self):

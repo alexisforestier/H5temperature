@@ -249,6 +249,24 @@ class NestedData():
         flat_data = self.flatten()
         return flat_data.get(key, None)
 
+    def sort_chrono(self):
+        def kfun(item):
+            key = item[0]
+            val = item[1]
+            if isinstance(val, NestedData):
+                # for group I use the first measurement
+                time = val[f'{key}[0]'].timestamp
+            else:
+                time = val.timestamp
+            return time
+
+        try:
+            self._data = dict(sorted(self._data.items(), key=kfun))
+            return True
+        except Exception as e:
+            print(f"Error(s) occurred while sorting: {e}")
+            return False
+
 
 class TemperaturesBatch():
     def __init__(self, measurements):
