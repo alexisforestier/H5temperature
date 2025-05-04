@@ -58,10 +58,12 @@ class BlackBodySpec():
         # fitted flag 
         self._fitted = False
 
+        saturation_tresh = 2**16 - 1
         # check for saturation:
         # satutated_flag
+        # max_data is the max over all lines of the CCD (Bjorn told me) 
         if max_data is not None:
-            self.saturated_ind = np.where(max_data >= (2**16 - 1))[0]
+            self.saturated_ind = np.where(max_data >= saturation_tresh)[0]
             self._saturated = (len(self.saturated_ind) > 0)
         else:
             # absence of raw data to check
@@ -170,16 +172,16 @@ class BlackBodySpec():
     def get_fit_results(self):
         dt1 = datetime.datetime.fromtimestamp(self.timestamp)
         dt1_str = dt1.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
-        out = dict(name = self.name, 
-                   time = dt1_str, 
+        out = dict(name = self.name,
+                   time = dt1_str,
                    fitted = self._fitted,
-                   T_planck = self.T_planck, 
-                   T_wien = self.T_wien, 
+                   T_planck = self.T_planck,
+                   T_wien = self.T_wien,
                    T_twocolor = self.T_twocolor,
-                   T_std_twocolor = self.T_std_twocolor, 
+                   T_std_twocolor = self.T_std_twocolor,
                    multiplier_planck = self.eps_planck,
                    multiplier_wien = self.eps_wien,
-                   background = self.bg, 
+                   background = self.bg,
                    lower_bound = self.pars['lowerb'],
                    upper_bound = self.pars['upperb'],
                    delta = self.pars['delta'],

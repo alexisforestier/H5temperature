@@ -304,7 +304,7 @@ class MainWindow(QWidget):
                 for i, vi in enumerate(v):
                     # define the keys in subitems with [i]
                     key = f'{k}[{i}]'
-                    group[key] = BlackBodySpec(k, **vi)
+                    group[key] = BlackBodySpec(key, **vi)
                 self.data[k] = group
 
         self.data.sort_chrono()
@@ -332,11 +332,16 @@ class MainWindow(QWidget):
 
     def populate_tree(self):
         if self.data:
+            previous = [self.dataset_tree.topLevelItem(x).text(0) 
+                        for x in range(self.dataset_tree.topLevelItemCount())]
             for k, v in self.data.items():
-                item_k = QTreeWidgetItem(self.dataset_tree, [k])
-                if isinstance(v, NestedData):
-                    for ki, vi in v.items():
-                        item_ki = QTreeWidgetItem(item_k, [ki])
+                if k not in previous:
+                    # k is passed in a list as an item may have several columns 
+                    # even if it is not our case:
+                    item_k = QTreeWidgetItem(self.dataset_tree, [k])
+                    if isinstance(v, NestedData):
+                        for ki, vi in v.items():
+                            item_ki = QTreeWidgetItem(item_k, [ki])
 
     @pyqtSlot()            
     def export_current_raw(self):
@@ -580,38 +585,22 @@ class MainWindow(QWidget):
                                         options=options)
         if filename:
             if filetype == 'Text File (*.txt)':
-                if '.txt' in filename:
-                    pass
-                else:
+                if not '.txt' in filename:
                     filename += '.txt'
 
             lines = []
-            ntoplevel = self.dataset_tree.topLevelItemCount()
-            # loop over items of the dataset_tree as a tip to maintain ordering
-            # not ideal but works
-            for ind in range(ntoplevel):
-                toplevel_item = self.dataset_tree.topLevelItem(ind)
-                toplevel_item_key = toplevel_item.text(0)
-    
-                if toplevel_item.childCount() > 0:
-                    nchilds = toplevel_item.childCount()
-                    for i in range(nchilds):
-                        child_key = toplevel_item.child(i).text(0)
-                        current = self.data[toplevel_item_key][child_key]
-                        lines.append(current.get_fit_results())
-                else:
-                    current = self.data[toplevel_item_key]
-                    lines.append(current.get_fit_results())
+            for elem in self.data.flatten().values():
+                lines.append(elem.get_fit_results())
     
             header = '\t'.join(list(lines[0].keys()))
             out = [list(l.values()) for l in lines]
 
             np.savetxt(filename, 
-               out, 
-               delimiter='\t', 
-               comments='',
-               fmt='%s',
-               header=header)
+                       out, 
+                       delimiter='\t', 
+                       comments='',
+                       fmt='%s',
+                       header=header)
         else:
             QMessageBox.critical(self, 'Error',
             'No file specified')
