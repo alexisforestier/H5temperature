@@ -436,7 +436,7 @@ class ChooseDeltaWindow(QWidget):
     def __init__(self, parent):
         super().__init__(parent, Qt.Window)
 
-        self.resize(500,400)
+        self.resize(400,300)
 
         self.setWindowTitle('Choose delta...')
         self.setStyleSheet("background-color: white")

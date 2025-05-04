@@ -346,9 +346,9 @@ class MainWindow(QWidget):
     @pyqtSlot()            
     def export_current_raw(self):
         item = self.dataset_tree.currentItem()
-        current = self.data.find_by_key(item.text(0))
+        if item is not None:
+            current = self.data.find_by_key(item.text(0))
 
-        if current:
             options =  QFileDialog.Options() 
             #options = QFileDialog.DontUseNativeDialog
             # ! Must be checked on different platforms !
@@ -397,9 +397,10 @@ class MainWindow(QWidget):
     @pyqtSlot()
     def choose_delta(self):
         item = self.dataset_tree.currentItem()
-        current = self.data.find_by_key(item.text(0))
 
-        if current:
+        if item is not None:
+            current = self.data.find_by_key(item.text(0))
+
             # calculate stdev vs. delta: could be done somewhere else?
             alldeltas = np.array(range(1,300)) # in px
             allstddevs = np.array( [np.nanstd(Ph.temp2color(
@@ -452,14 +453,25 @@ class MainWindow(QWidget):
 
     @pyqtSlot(str)
     def update(self, called_from):
-        item = self.dataset_tree.currentItem()
-        current = self.data.find_by_key(item.text(0))
-
         # clear all plots and fit results table:
         self.canvas.clear_all()
         self.results_table.clearContents()
 
-        if current:            
+        item = self.dataset_tree.currentItem()
+        # if item is a parent I select the first child:
+        if item.childCount() > 0:
+            item.setExpanded(True)
+            item.setSelected(False)
+            first_child = item.child(0)
+            first_child.setSelected(True)
+            self.dataset_tree.setCurrentItem(first_child)
+            self.dataset_tree.scrollToItem(first_child)
+            self.dataset_tree.setFocus()
+            item = self.dataset_tree.currentItem()
+
+        if item is not None:
+            current = self.data.find_by_key(item.text(0))
+         
             # if autofit, or called from fitbutton or delta_changed
             # we do the fit:
             if self.autofit or (not called_from == 'dataset_tree'):
@@ -479,10 +491,11 @@ class MainWindow(QWidget):
                 self.batch_win.replot(self.batch)
 
         # no item selected:
-        else:
+#        else:
+#            pass
             #empty if no data e.g. main item of a serie
-            self.canvas.clear_all()
-            self.results_table.clearContents()
+#            self.canvas.clear_all()
+#            self.results_table.clearContents()
         # this should update the choose delta window if it stays open!
         # but lead to call again choose_delta after delta update... 
         # not really great
