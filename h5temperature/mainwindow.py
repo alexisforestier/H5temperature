@@ -232,7 +232,7 @@ class MainWindow(QWidget):
         self.batch_fit_button.setContextMenuPolicy(Qt.CustomContextMenu)       
         self.batch_fit_button.customContextMenuRequested.connect(
                 lambda pos: self.show_any_menu(pos, self.batch_fit_button, 
-                                                   self.batch_menu))
+                                                    self.batch_menu))
 
         self.choosedelta_button.clicked.connect(self.choose_delta)
         self.choosedelta_win.delta_changed.connect(self.update_delta)
@@ -283,17 +283,17 @@ class MainWindow(QWidget):
             options=options)
 
         if self.filepath:
-            self.get_h5file_content()
-            self.populate_dataset_tree()
+            self.load_h5file_content()
+            self.populate_tree()
             self.currentfilename_label.setText(self.filepath.split('/')[-1])
 
     @pyqtSlot()
     def reload_h5file(self):
         if self.filepath:
-            self.get_h5file_content()
-            self.populate_dataset_tree()
+            self.load_h5file_content()
+            self.populate_tree()
 
-    def get_h5file_content(self):
+    def load_h5file_content(self):
         # read h5 file and store in self.data:
         extracted = read_h5file(self.filepath)
         for k, v in extracted.items():
@@ -302,10 +302,12 @@ class MainWindow(QWidget):
             elif isinstance(v, list):
                 group = NestedData()
                 for i, vi in enumerate(v):
-                    # how I define the keys in subitems:
+                    # define the keys in subitems with [i]
                     key = f'{k}[{i}]'
                     group[key] = BlackBodySpec(k, **vi)
                 self.data[k] = group
+
+        self.data.sort_chrono()
 
     @pyqtSlot()
     def load_ascii(self):
@@ -325,25 +327,10 @@ class MainWindow(QWidget):
                 # here di contains name contrarily to h5 case..
                 self.data[di['name']] = BlackBodySpec(**di)
             
-            self.populate_dataset_tree()
+            self.data.sort_chrono()
+            self.populate_tree()
 
-    def get_data_from_tree_item(self, item):
-        ''' from item clicked returns the corresponding instance of 
-        BlackBodySpec '''
-        if item:
-            key = item.text(0)
-            # if it is a sub item:
-            if item.parent() is not None:
-                parent_key = item.parent().text(0)
-                return self.data[parent_key][key]
-            # if it is a proper individual measurementy:
-            elif item.childCount() == 0:
-                return self.data[key]
-            # it may be the main key of a serie of measurements:
-            else: 
-                return None 
-
-    def populate_dataset_tree(self):
+    def populate_tree(self):
         if self.data:
             for k, v in self.data.items():
                 item_k = QTreeWidgetItem(self.dataset_tree, [k])
@@ -354,7 +341,7 @@ class MainWindow(QWidget):
     @pyqtSlot()            
     def export_current_raw(self):
         item = self.dataset_tree.currentItem()
-        current = self.get_data_from_tree_item(item)
+        current = self.data.find_by_key(item.text(0))
 
         if current:
             options =  QFileDialog.Options() 
@@ -369,34 +356,33 @@ class MainWindow(QWidget):
 
             if filename:
                 if filetype == 'Text File (*.txt)':
-                    if '.txt' in filename:
-                        pass
-                    else:
+                    if not '.txt' in filename:
                         filename += '.txt'
                         
                 # create empty array of len(lam) to be saved in txt
                 twocolor_ = np.empty( len(current.lam) )
                 # fill with NaN
-                twocolor_.fill(np.nan) 
+                twocolor_.fill(np.nan)
 
+                # create nans of length delta (px)
                 nans = np.empty(current.pars['delta'])
                 nans.fill(np.nan)
 
+                # nans of length delta at the end:
                 dat1 = np.concatenate([current.twocolor, nans])
                 # populate twocolor_ only where data should be, the rest is nan
                 twocolor_[current.ind_interval] = dat1
 
-                # we do not export rawwien without BG correction if used. 
-                # This may change!
                 data_ = np.column_stack((current.lam,
                                          current.planck,
                                          current.wien,
+                                         current.rawwien,
                                          twocolor_))
                 np.savetxt(filename, 
                            data_, 
                            delimiter='\t', 
                            comments='',
-                           header='lambda\tPlanck\tWien\ttwocolor')
+                           header='lambda\tplanck\twien\traw_wien\ttwocolor')
 
     @pyqtSlot(int)
     def update_delta(self, x):
@@ -406,11 +392,11 @@ class MainWindow(QWidget):
     @pyqtSlot()
     def choose_delta(self):
         item = self.dataset_tree.currentItem()
-        current = self.get_data_from_tree_item(item)
+        current = self.data.find_by_key(item.text(0))
 
         if current:
             # calculate stdev vs. delta: could be done somewhere else?
-            alldeltas = np.array(range(1,300))
+            alldeltas = np.array(range(1,300)) # in px
             allstddevs = np.array( [np.nanstd(Ph.temp2color(
                                     current.lam[current.ind_interval], 
                                     current.wien[current.ind_interval], 
@@ -430,7 +416,7 @@ class MainWindow(QWidget):
     def clear_all(self):
         self.filepath = str()
         self.currentfilename_label.setText('')
-        self.data = dict()
+        self.data = NestedData()
         self.dataset_tree.clear()
         self.results_table.clearContents()
         self.batch = None
@@ -438,8 +424,9 @@ class MainWindow(QWidget):
         self.canvas.clear_all()
         self.choosedelta_win.clear_canvas()
 
-    def eval_fits(self, current):
+        # we should clear batch plot here
 
+    def eval_fits(self, current):
         if not current.pars == self.pars:
             current.set_pars(self.pars)
             # eval all quantities for a given spectrum
@@ -460,27 +447,25 @@ class MainWindow(QWidget):
 
     @pyqtSlot(str)
     def update(self, called_from):
-
         item = self.dataset_tree.currentItem()
-        current = self.get_data_from_tree_item(item)
+        current = self.data.find_by_key(item.text(0))
 
         # clear all plots and fit results table:
         self.canvas.clear_all()
         self.results_table.clearContents()
 
         if current:            
-            # if autofit, or not called from fit button/delta_changed
+            # if autofit, or called from fitbutton or delta_changed
             # we do the fit:
             if self.autofit or (not called_from == 'dataset_tree'):
                 self.eval_fits(current)
 
+            # in any case we update display!
+            self.canvas.update_data(current)
             if current._fitted:
                 self.canvas.update_fits(current)
                 self.results_table.set_values(current)
 
-            # in all cases we plot data:
-            self.canvas.update_data(current)
-            
             # propagate change to the batch widget:
             # current.name is always the parent name in the group, this may change
             # or a class for groups ?  

@@ -94,9 +94,6 @@ class BlackBodySpec():
 
     def eval_twocolor(self):
 
-        if not self._fitted:
-            self._fitted = True
-
         # calculate 2color 
         self.twocolor = Ph.temp2color(self.lam[self.ind_interval], 
                                       self.wien[self.ind_interval], 
@@ -108,9 +105,6 @@ class BlackBodySpec():
         
 
     def eval_wien_fit(self):
-
-        if not self._fitted:
-            self._fitted = True
 
         # in cases of I-bg < 0, the wien fct returns np.nan:
         # we keep only valid data for the fit.
@@ -131,6 +125,7 @@ class BlackBodySpec():
 
     def eval_planck_fit(self):
 
+        # flag _fitted here in planck:
         if not self._fitted:
             self._fitted = True
 
@@ -247,7 +242,11 @@ class NestedData():
 
     def find_by_key(self, key):
         flat_data = self.flatten()
-        return flat_data.get(key, None)
+        val = flat_data.get(key, None)
+        if isinstance(val, BlackBodySpec):
+            return val
+        else:
+            return None 
 
     def sort_chrono(self):
         def kfun(item):
@@ -262,10 +261,10 @@ class NestedData():
 
         try:
             self._data = dict(sorted(self._data.items(), key=kfun))
-            return True
+#            return True
         except Exception as e:
             print(f"Error(s) occurred while sorting: {e}")
-            return False
+#            return False
 
 
 class TemperaturesBatch():
