@@ -32,7 +32,8 @@ class BlackBodySpec():
         ordind = np.argsort(lam)
         self.lam = lam[ordind]
         self.planck = planck[ordind]
-        max_data = max_data[ordind]
+        if max_data is not None:
+            max_data = max_data[ordind]
         
         self.name = name
         self.time = time
@@ -57,9 +58,12 @@ class BlackBodySpec():
         # fitted flag 
         self._fitted = False
 
+        saturation_tresh = 2**16 - 1
         # check for saturation:
+        # satutated_flag
+        # max_data is the max over all lines of the CCD (Bjorn told me) 
         if max_data is not None:
-            self.saturated_ind = np.where(max_data >= (2**16 - 1))[0]
+            self.saturated_ind = np.where(max_data >= saturation_tresh)[0]
             self._saturated = (len(self.saturated_ind) > 0)
         else:
             # absence of raw data to check
@@ -92,9 +96,6 @@ class BlackBodySpec():
 
     def eval_twocolor(self):
 
-        if not self._fitted:
-            self._fitted = True
-
         # calculate 2color 
         self.twocolor = Ph.temp2color(self.lam[self.ind_interval], 
                                       self.wien[self.ind_interval], 
@@ -106,9 +107,6 @@ class BlackBodySpec():
         
 
     def eval_wien_fit(self):
-
-        if not self._fitted:
-            self._fitted = True
 
         # in cases of I-bg < 0, the wien fct returns np.nan:
         # we keep only valid data for the fit.
@@ -129,6 +127,7 @@ class BlackBodySpec():
 
     def eval_planck_fit(self):
 
+        # flag _fitted here in planck:
         if not self._fitted:
             self._fitted = True
 
@@ -173,22 +172,102 @@ class BlackBodySpec():
     def get_fit_results(self):
         dt1 = datetime.datetime.fromtimestamp(self.timestamp)
         dt1_str = dt1.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
-        out = dict(name = self.name, 
-                   time = dt1_str, 
+        out = dict(name = self.name,
+                   time = dt1_str,
                    fitted = self._fitted,
-                   T_planck = self.T_planck, 
-                   T_wien = self.T_wien, 
+                   T_planck = self.T_planck,
+                   T_wien = self.T_wien,
                    T_twocolor = self.T_twocolor,
-                   T_std_twocolor = self.T_std_twocolor, 
+                   T_std_twocolor = self.T_std_twocolor,
                    multiplier_planck = self.eps_planck,
                    multiplier_wien = self.eps_wien,
-                   background = self.bg, 
+                   background = self.bg,
                    lower_bound = self.pars['lowerb'],
                    upper_bound = self.pars['upperb'],
                    delta = self.pars['delta'],
                    usebg = self.pars['usebg'],
                    saturated = self._saturated)
         return out
+
+
+class NestedData():
+    def __init__(self, *args, **kwargs):
+        self._data = dict(*args, **kwargs)
+
+    def __delitem__(self, key):
+        del self._data[key]
+
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def __setitem__(self, key, value):
+        if isinstance(value, BlackBodySpec) or isinstance(value, NestedData):
+            self._data[key] = value
+        else:
+            raise ValueError("Value must be BlackBodySpec or NestedData")
+
+    def __repr__(self):
+        return f"NestedData({self._data})"
+
+    def __len__(self):
+        # len returns the total number of measurements
+        total_length = 0
+        for value in self._data.values():
+            if isinstance(value, NestedData):
+                total_length += len(value)
+            else:
+                total_length += 1
+        return total_length
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def keys(self):
+        return self._data.keys()
+
+    def values(self):
+        return self._data.values()
+
+    def items(self):
+        return self._data.items()
+
+    def flatten(self):
+        flat_dict = {}
+        for key, value in self._data.items():
+            if isinstance(value, NestedData):
+                # Value is a NestedData:
+                flat_dict.update(value.flatten())
+            else:
+                # Value is a BlackBodySpec
+                flat_dict[key] = value
+        return flat_dict
+
+    def find_by_key(self, key):
+        flat_data = self.flatten()
+        val = flat_data.get(key, None)
+        if isinstance(val, BlackBodySpec):
+            return val
+        else:
+            return None 
+
+    def sort_chrono(self):
+        def kfun(item):
+            key = item[0]
+            val = item[1]
+            if isinstance(val, NestedData):
+                # for group I use the first measurement
+                time = val[f'{key}[0]'].timestamp
+            else:
+                time = val.timestamp
+            return time
+
+        try:
+            self._data = dict(sorted(self._data.items(), key=kfun))
+#            return True
+        except Exception as e:
+            print(f"Error(s) occurred while sorting: {e}")
+#            return False
+
 
 class TemperaturesBatch():
     def __init__(self, measurements):

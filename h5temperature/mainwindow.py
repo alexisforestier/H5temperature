@@ -40,8 +40,9 @@ from PyQt5.QtGui import QIcon, QPixmap
 
 from h5temperature import __version__
 import h5temperature.physics as Ph 
-from h5temperature.formats import get_data_from_h5group, get_data_from_ascii
-from h5temperature.models import BlackBodySpec, TemperaturesBatch
+from h5temperature.formats import (read_h5file, 
+                                   get_data_from_ascii)
+from h5temperature.models import BlackBodySpec, NestedData, TemperaturesBatch
 from h5temperature.plots import (FourPlotsCanvas,
                                  ChooseDeltaWindow,
                                  BatchWindow)
@@ -63,7 +64,7 @@ class MainWindow(QWidget):
 
         # data stored in MainWindow
         self.filepath = str()
-        self.data = dict()
+        self.data = NestedData()
         self.batch = None   # No batch by default
         self.autofit = True # <- automatic fit or not
 
@@ -231,7 +232,7 @@ class MainWindow(QWidget):
         self.batch_fit_button.setContextMenuPolicy(Qt.CustomContextMenu)       
         self.batch_fit_button.customContextMenuRequested.connect(
                 lambda pos: self.show_any_menu(pos, self.batch_fit_button, 
-                                                   self.batch_menu))
+                                                    self.batch_menu))
 
         self.choosedelta_button.clicked.connect(self.choose_delta)
         self.choosedelta_win.delta_changed.connect(self.update_delta)
@@ -282,38 +283,31 @@ class MainWindow(QWidget):
             options=options)
 
         if self.filepath:
-            self.get_h5file_content()
-            self.populate_dataset_tree()
+            self.load_h5file_content()
+            self.populate_tree()
             self.currentfilename_label.setText(self.filepath.split('/')[-1])
 
     @pyqtSlot()
     def reload_h5file(self):
         if self.filepath:
-            self.get_h5file_content()
-            self.populate_dataset_tree()
+            self.load_h5file_content()
+            self.populate_tree()
 
-    def get_h5file_content(self):
-        # read h5 file and store in self.data: 
-        with h5py.File(self.filepath, 'r') as file:
-            for nam, group in file.items():
-                if group is not None: 
-                # get temperature measurements only
-                    if 'measurement/T_planck' in group:
-                    # not already loaded only / no identical key!
-                        if nam not in self.data:
-                        # populate data:
-                            d = get_data_from_h5group(group)
-                            if type(d) is dict:
-                                self.data[nam] = BlackBodySpec(nam, **d)
-                            elif type(d) is list:
-                                # if multiple measurements, element is a dict:
-                                self.data[nam] = dict()
-                                for i, di in enumerate(d):
-                                    k = '{}'.format(i)
-                                    subnam = ''.join([nam, '[{}]'.format(i)])
-                                    # use names for referencing
-                                    self.data[nam][subnam] = \
-                                                BlackBodySpec(subnam, **di)
+    def load_h5file_content(self):
+        # read h5 file and store in self.data:
+        extracted = read_h5file(self.filepath)
+        for k, v in extracted.items():
+            if isinstance(v, dict):
+                self.data[k] = BlackBodySpec(k, **v)
+            elif isinstance(v, list):
+                group = NestedData()
+                for i, vi in enumerate(v):
+                    # define the keys in subitems with [i]
+                    key = f'{k}[{i}]'
+                    group[key] = BlackBodySpec(key, **vi)
+                self.data[k] = group
+
+        self.data.sort_chrono()
 
     @pyqtSlot()
     def load_ascii(self):
@@ -328,73 +322,33 @@ class MainWindow(QWidget):
             options=options)
 
         if self.filepaths:
-            for f in self.filepaths:
-                name = f.split('/')[-1]
-                d1 = get_data_from_ascii(f)
-
-                if name not in self.data:
-                    self.data[name] = BlackBodySpec(name, **d1)
-
-            self.populate_dataset_tree()
-
-    def get_data_from_tree_item(self, item):
-        ''' from item clicked returns the corresponding instance of 
-        BlackBodySpec '''
-        if item:
-            key = item.text(0)
-            # if it is a sub item:
-            if item.parent() is not None:
-                parent_key = item.parent().text(0)
-                return self.data[parent_key][key]
-            # if it is a proper individual measurementy:
-            elif item.childCount() == 0:
-                return self.data[key]
-            # it may be the main key of a serie of measurements:
-            else: 
-                return None 
-
-    def populate_dataset_tree(self):
-        if self.data:
-            # sort datasets in chronological order
-            # this may one day be a class method?
-            def get_timestamp(k, elem):
-                if isinstance(elem, dict):
-                    firstelem = self.data[k][list(self.data[k].keys())[0]]
-                    return firstelem.timestamp
-                else:
-                    return self.data[k].timestamp
-
-            try:
-                names_chrono = sorted(self.data.keys(), 
-                          key = lambda k:  get_timestamp(k, self.data[k]))
-            except:
-                QMessageBox.warning(self, 'Warning',
-                'Problem with measurement dates and times.\n'
-                'Chronological order will NOT be used.')     
-
-                names_chrono = self.data.keys()
+            d = get_data_from_ascii(self.filepaths)
+            for di in d:
+                # here di contains name contrarily to h5 case..
+                self.data[di['name']] = BlackBodySpec(**di)
             
-            prev_items = [self.dataset_tree.topLevelItem(x).text(0) 
-                    for x in range(self.dataset_tree.topLevelItemCount())]
-            # new items will always be added at the end
-            # thus data are in chronological order within 
-            # a given h5 loaded but not globally. 
-            for n in names_chrono:
-                if n not in prev_items:
-                    item_n = QTreeWidgetItem(self.dataset_tree, [n])
-                    if type(self.data[n]) is dict:
-                        for k in self.data[n].keys():
-                            item_k = QTreeWidgetItem(item_n, [str(k)])
-                    #test = QTreeWidgetItem(item_n, ["test1","test2"])
-                    #self.dataset_tree.addTopLevelItem(QTreeWidgetItem([n]))
+            self.data.sort_chrono()
+            self.populate_tree()
 
+    def populate_tree(self):
+        if self.data:
+            previous = [self.dataset_tree.topLevelItem(x).text(0) 
+                        for x in range(self.dataset_tree.topLevelItemCount())]
+            for k, v in self.data.items():
+                if k not in previous:
+                    # k is passed in a list as an item may have several columns 
+                    # even if it is not our case:
+                    item_k = QTreeWidgetItem(self.dataset_tree, [k])
+                    if isinstance(v, NestedData):
+                        for ki, vi in v.items():
+                            item_ki = QTreeWidgetItem(item_k, [ki])
 
     @pyqtSlot()            
     def export_current_raw(self):
         item = self.dataset_tree.currentItem()
-        current = self.get_data_from_tree_item(item)
+        if item is not None:
+            current = self.data.find_by_key(item.text(0))
 
-        if current:
             options =  QFileDialog.Options() 
             #options = QFileDialog.DontUseNativeDialog
             # ! Must be checked on different platforms !
@@ -407,34 +361,33 @@ class MainWindow(QWidget):
 
             if filename:
                 if filetype == 'Text File (*.txt)':
-                    if '.txt' in filename:
-                        pass
-                    else:
+                    if not '.txt' in filename:
                         filename += '.txt'
                         
                 # create empty array of len(lam) to be saved in txt
                 twocolor_ = np.empty( len(current.lam) )
                 # fill with NaN
-                twocolor_.fill(np.nan) 
+                twocolor_.fill(np.nan)
 
+                # create nans of length delta (px)
                 nans = np.empty(current.pars['delta'])
                 nans.fill(np.nan)
 
+                # nans of length delta at the end:
                 dat1 = np.concatenate([current.twocolor, nans])
                 # populate twocolor_ only where data should be, the rest is nan
                 twocolor_[current.ind_interval] = dat1
 
-                # we do not export rawwien without BG correction if used. 
-                # This may change!
                 data_ = np.column_stack((current.lam,
                                          current.planck,
                                          current.wien,
+                                         current.rawwien,
                                          twocolor_))
                 np.savetxt(filename, 
                            data_, 
                            delimiter='\t', 
                            comments='',
-                           header='lambda\tPlanck\tWien\ttwocolor')
+                           header='lambda\tplanck\twien\traw_wien\ttwocolor')
 
     @pyqtSlot(int)
     def update_delta(self, x):
@@ -444,11 +397,12 @@ class MainWindow(QWidget):
     @pyqtSlot()
     def choose_delta(self):
         item = self.dataset_tree.currentItem()
-        current = self.get_data_from_tree_item(item)
 
-        if current:
+        if item is not None:
+            current = self.data.find_by_key(item.text(0))
+
             # calculate stdev vs. delta: could be done somewhere else?
-            alldeltas = np.array(range(1,300))
+            alldeltas = np.array(range(1,300)) # in px
             allstddevs = np.array( [np.nanstd(Ph.temp2color(
                                     current.lam[current.ind_interval], 
                                     current.wien[current.ind_interval], 
@@ -468,7 +422,7 @@ class MainWindow(QWidget):
     def clear_all(self):
         self.filepath = str()
         self.currentfilename_label.setText('')
-        self.data = dict()
+        self.data = NestedData()
         self.dataset_tree.clear()
         self.results_table.clearContents()
         self.batch = None
@@ -476,8 +430,9 @@ class MainWindow(QWidget):
         self.canvas.clear_all()
         self.choosedelta_win.clear_canvas()
 
-    def eval_fits(self, current):
+        # we should clear batch plot here
 
+    def eval_fits(self, current):
         if not current.pars == self.pars:
             current.set_pars(self.pars)
             # eval all quantities for a given spectrum
@@ -498,27 +453,36 @@ class MainWindow(QWidget):
 
     @pyqtSlot(str)
     def update(self, called_from):
-
-        item = self.dataset_tree.currentItem()
-        current = self.get_data_from_tree_item(item)
-
         # clear all plots and fit results table:
         self.canvas.clear_all()
         self.results_table.clearContents()
 
-        if current:            
-            # if autofit, or not called from fit button/delta_changed
+        item = self.dataset_tree.currentItem()
+        # if item is a parent I select the first child:
+        if item.childCount() > 0:
+            item.setExpanded(True)
+            item.setSelected(False)
+            first_child = item.child(0)
+            first_child.setSelected(True)
+            self.dataset_tree.setCurrentItem(first_child)
+            self.dataset_tree.scrollToItem(first_child)
+            self.dataset_tree.setFocus()
+            item = self.dataset_tree.currentItem()
+
+        if item is not None:
+            current = self.data.find_by_key(item.text(0))
+         
+            # if autofit, or called from fitbutton or delta_changed
             # we do the fit:
             if self.autofit or (not called_from == 'dataset_tree'):
                 self.eval_fits(current)
 
+            # in any case we update display!
+            self.canvas.update_data(current)
             if current._fitted:
                 self.canvas.update_fits(current)
                 self.results_table.set_values(current)
 
-            # in all cases we plot data:
-            self.canvas.update_data(current)
-            
             # propagate change to the batch widget:
             # current.name is always the parent name in the group, this may change
             # or a class for groups ?  
@@ -527,10 +491,11 @@ class MainWindow(QWidget):
                 self.batch_win.replot(self.batch)
 
         # no item selected:
-        else:
+#        else:
+#            pass
             #empty if no data e.g. main item of a serie
-            self.canvas.clear_all()
-            self.results_table.clearContents()
+#            self.canvas.clear_all()
+#            self.results_table.clearContents()
         # this should update the choose delta window if it stays open!
         # but lead to call again choose_delta after delta update... 
         # not really great
@@ -633,38 +598,22 @@ class MainWindow(QWidget):
                                         options=options)
         if filename:
             if filetype == 'Text File (*.txt)':
-                if '.txt' in filename:
-                    pass
-                else:
+                if not '.txt' in filename:
                     filename += '.txt'
 
             lines = []
-            ntoplevel = self.dataset_tree.topLevelItemCount()
-            # loop over items of the dataset_tree as a tip to maintain ordering
-            # not ideal but works
-            for ind in range(ntoplevel):
-                toplevel_item = self.dataset_tree.topLevelItem(ind)
-                toplevel_item_key = toplevel_item.text(0)
-    
-                if toplevel_item.childCount() > 0:
-                    nchilds = toplevel_item.childCount()
-                    for i in range(nchilds):
-                        child_key = toplevel_item.child(i).text(0)
-                        current = self.data[toplevel_item_key][child_key]
-                        lines.append(current.get_fit_results())
-                else:
-                    current = self.data[toplevel_item_key]
-                    lines.append(current.get_fit_results())
+            for elem in self.data.flatten().values():
+                lines.append(elem.get_fit_results())
     
             header = '\t'.join(list(lines[0].keys()))
             out = [list(l.values()) for l in lines]
 
             np.savetxt(filename, 
-               out, 
-               delimiter='\t', 
-               comments='',
-               fmt='%s',
-               header=header)
+                       out, 
+                       delimiter='\t', 
+                       comments='',
+                       fmt='%s',
+                       header=header)
         else:
             QMessageBox.critical(self, 'Error',
             'No file specified')

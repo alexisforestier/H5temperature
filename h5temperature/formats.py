@@ -15,16 +15,23 @@
 #   You should have received a copy of the GNU General Public License 
 #   along with h5temperature. If not, see <https://www.gnu.org/licenses/>.
 
-
 import os
 import numpy as np
 import datetime
+import h5py
 import csv
 
-def get_data_from_h5group(group):
+def read_h5file(path):
+    with h5py.File(path, 'r') as file:
+        out = dict()
+        for nam, group in file.items():
+            if 'measurement/T_planck' in group:
+                d = get_data_from_h5group(group)
+                out[nam] = d
+    return out
 
+def get_data_from_h5group(group):
     t1 = str(np.array(group['start_time'])[()])
-    
     try:
         time = datetime.datetime.strptime(t1, "b'%Y-%m-%dT%H:%M:%S.%f%z'")
     except:
@@ -52,20 +59,20 @@ def get_data_from_h5group(group):
                          "Expected 1 or 2 dimensions")
     return out
 
-def get_data_from_ascii(path):
+def get_data_from_ascii(paths):
+    out = list()
+    for path in paths:
+        name = path.split('/')[-1]
+        darr = customparse_file2data(path)
+        try:
+            time = datetime.datetime.fromtimestamp(os.path.getmtime(path))
+        except:
+            time = None
+        lam = darr[:,0]
+        planck = darr[:,1]
+        # arrange data as in h5 mode:
+        out.append(dict(name=name, lam=lam, planck=planck, time=time))
 
-    # Should be adapted for loading several files at a time ?
-    darr = customparse_file2data(path)
-    try:
-        time = datetime.datetime.fromtimestamp(os.path.getmtime(path))
-    except:
-        time = None
-
-    lam = darr[:,0]
-    planck = darr[:,1]
-
-    # arrange data as in h5 mode:
-    out = dict(lam=lam, planck=planck, time=time)
     return out
 
 def customparse_file2data(f):
@@ -106,3 +113,25 @@ def customparse_file2data(f):
 
         #print('length: {}'.format(len(data)))
         return data[:, :2]
+
+if __name__ == '__main__':
+
+    path = "/home/alex/mnt/Data1/ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/hc5078_CDMX18.h5"
+    path2= "/home/alex/mnt/Data1/ESRF/hc5078_10_13-02-2023-CDMX18/CDMX18/CDMX18_rampe01/CDMX18_rampe01.h5"
+
+    from h5temperature.models import BlackBodySpec, NestedData
+
+    test = read_h5file(path)
+    alldata = NestedData()
+    for k, v in test.items():
+        if isinstance(v, dict):
+            u = BlackBodySpec(k, **v)
+            alldata[k] = u
+        elif isinstance(v, list):
+            thedata = NestedData()
+            for i, vi in enumerate(v):
+                key = f'{k}[{i}]'
+                thedata[key] = BlackBodySpec(k, **vi)
+            alldata[k] = thedata
+    print(alldata.sort_chrono())
+    print(alldata.keys())

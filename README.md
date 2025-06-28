@@ -2,13 +2,19 @@
 
 ## Description
 
-`h5temperature` is a user-friendly application designed to analyze radiometric temperature measurements from laser-heating experiments in diamond anvil cells. It supports ESRF HDF5 data files, offers data fitting with Planck and Wien formulas, and sliding two-color pyrometry analysis, as well as other features.
+`h5temperature` is a user-friendly graphical application designed to analyze radiometric temperature measurements from laser-heating experiments in diamond anvil cells. It supports ESRF HDF5 data files, offers data fitting with Planck and Wien formulas, and sliding two-color pyrometry analysis, as well as other features.
 
 The analysis methods used in `h5temperature` are detailed in: [Benedetti & Loubeyre (2004), Temperature gradients,
 wavelength-dependent emissivity, and accuracy of high and very-high temperatures
 measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445](https://doi.org/10.1080/08957950412331331718). 
 
 Feel free to contribute to `h5temperature`! If you encounter any bugs or have suggestions for improvements, please report them!
+
+## What's new (v 0.4.2)
+
+* _Fixed ASCII data loading bug_
+* Multiple ASCII files can be loaded simultaneously
+* Modified the architecture for handling nested data structures (ramps etc.)
 
 ## What's new (v 0.4.1)
 
@@ -57,7 +63,7 @@ Then `h5temperature` can be started, type:
 h5temperature
 ```
 
-#### Another way
+#### Through requirements.txt
 
 Ensure you have the requirements listed above installed. To install all required dependencies at once, run in the `H5temperature` directory:
 ```
@@ -82,6 +88,7 @@ Tested on Windows 10 only
 
 Use the "Load h5" button to load a specific HDF5 file. 
 All temperature measurements within this file will be displayed.
+Right-clicking on 'Load h5' displays a menu that allows you to load an ASCII file.
 
 The fit is performed automatically when you click on a measurement in the left panel, if the `autofit` mode is active. Otherwise, click the "Fit" button. 
 
@@ -89,5 +96,4 @@ The fit is performed automatically when you click on a measurement in the left p
 
 * Use PyQtGraph instead of matplotlib for better performance
 * Save and load work sessions
-* Batch loading of several files in ASCII format
 * 2D representation of the fitted batch for temperature mapping
