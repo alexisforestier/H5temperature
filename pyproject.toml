@@ -8,10 +8,10 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.13"
-numpy = ">=1.19.5,<1.25"
+numpy = ">=1.19.5,<1.24"
 matplotlib = ">=3.2.0,<3.8"
-PyQt5 = ">=5.15.2,<5.16"
-h5py = ">=3.0.0,<3.9"
+PyQt5 = ">=5.15.2,<5.17"
+h5py = ">=3.0.0,<3.8"
 scipy = ">=1.0.0,<1.11"
 
 [build-system]
