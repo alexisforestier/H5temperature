@@ -75,14 +75,10 @@ class MainWindow(QWidget):
                          usebg = False)
 
         # left layout   
-        self.load_button = QPushButton('Load h5')
+        self.load_button = QPushButton('Load')
         self.reload_button = QPushButton('Reload')
         self.clear_button = QPushButton('Clear')
         self.exportraw_button = QPushButton('Export current')
-
-        self.load_menu = QMenu(self)
-        self.load_menu.addAction(QAction("Load h5", self))
-        self.load_menu.addAction(QAction("Load ASCII", self))
 
         topleftbuttonslayout = QHBoxLayout()
         topleftbuttonslayout.addWidget(self.load_button)
@@ -208,12 +204,7 @@ class MainWindow(QWidget):
 
     def create_connects(self):
 
-        self.load_button.clicked.connect(self.load_h5file)
-        self.load_button.setContextMenuPolicy(Qt.CustomContextMenu)       
-        self.load_button.customContextMenuRequested.connect(
-                lambda pos: self.show_any_menu(pos, self.load_button, 
-                                                   self.load_menu))
-
+        self.load_button.clicked.connect(self.load)
         self.reload_button.clicked.connect(self.reload_h5file)
         self.clear_button.clicked.connect(self.clear_all)
         self.about_button.clicked.connect(self.show_about)
@@ -257,38 +248,55 @@ class MainWindow(QWidget):
 #        self.delta_spinbox.editingFinished.connect(self.update)
 #        self.usebg_checkbox.stateChanged.connect(self.update)
 
-        self.load_menu.triggered.connect(self.load_menu_slot)
         self.batch_menu.triggered.connect(self.batch_fit)
-
-    @pyqtSlot(QAction)
-    def load_menu_slot(self, action):
-        if action.text() == 'Load h5':
-            self.load_h5file()
-        elif action.text() == 'Load ASCII':
-            self.load_ascii()
 
     @pyqtSlot(QPoint, QWidget, QMenu)
     def show_any_menu(self, pos, clicked_widget, menu):
         menu.exec_(clicked_widget.mapToGlobal(pos))
 
     @pyqtSlot()
-    def load_h5file(self):
+    def load(self):
         options = QFileDialog.Options()
         # ! use Native dialog or qt dialog... 
         # ! Must be checked on different platforms !
 
     #   options |= QFileDialog.DontUseNativeDialog
-        self.filepath, _ = QFileDialog.getOpenFileName(self,
-            "Load HDF5 file", "","HDF5 file *.h5 *.hdf5 (*.h5 *.hdf5)", 
+        paths, file_filter = QFileDialog.getOpenFileNames(self,
+            "Load file", "", "NeXus HDF5 file (*.h5 *.hdf5);;"
+                             "ASCII File (*.txt *.dat *.csv *.asc);;"
+                             "Any File (*.*)",
             options=options)
 
-        if self.filepath:
-            self.load_h5file_content()
-            self.populate_tree()
-            self.currentfilename_label.setText(self.filepath.split('/')[-1])
+        if paths:
+            # H5 CASE:
+            if file_filter == 'NeXus HDF5 file (*.h5 *.hdf5)':
+                if len(paths) > 1:
+                    # It would be easy to load successively each file,
+                    # but what do we do with reload button? 
+                    # left like that for now
+                    QMessageBox.critical(self, 'Error',
+                                'Loading multiple HDF5 files'
+                                ' at once is not implemented.')
+                else:
+                    self.filepath = paths[0]
+                    self.load_h5file_content()
+                    self.populate_tree()
+                    self.currentfilename_label.setText(self.filepath.split('/')[-1])
+            # All the rest is treated as ASCII files
+            else:
+                d = get_data_from_ascii(paths)
+                for di in d:
+                    # here di contains name contrarily to h5 case..
+                    self.data[di['name']] = BlackBodySpec(**di)
+                
+                self.data.sort_chrono()
+                self.populate_tree()
 
     @pyqtSlot()
     def reload_h5file(self):
+        # No mechanism for RELOAD when using ASCII files yet.
+        # In ascii mode, self.filepath remain None.
+        # In future, use the folder and search for new ascii files in it.  
         if self.filepath:
             self.load_h5file_content()
             self.populate_tree()
@@ -308,27 +316,6 @@ class MainWindow(QWidget):
                 self.data[k] = group
 
         self.data.sort_chrono()
-
-    @pyqtSlot()
-    def load_ascii(self):
-        options = QFileDialog.Options()
-        # ! use Native dialog or qt dialog... 
-        # ! Must be checked on different platforms !
-
-    #   options |= QFileDialog.DontUseNativeDialog
-        self.filepaths, _ = QFileDialog.getOpenFileNames(self,
-            "Load Text file", "","Text File *.txt *.dat *.asc "
-                        "(*.txt *.dat *.asc);;Any File *.* (*.*)", 
-            options=options)
-
-        if self.filepaths:
-            d = get_data_from_ascii(self.filepaths)
-            for di in d:
-                # here di contains name contrarily to h5 case..
-                self.data[di['name']] = BlackBodySpec(**di)
-            
-            self.data.sort_chrono()
-            self.populate_tree()
 
     def populate_tree(self):
         if self.data:

@@ -10,6 +10,11 @@ measured in the laser-heated diamond cell, High Pressure Research, 24:4, 423-445
 
 Feel free to contribute to `h5temperature`! If you encounter any bugs or have suggestions for improvements, please report them!
 
+## What's VERY new (v 0.4.3)
+
+* ASCII and H5 files can be loaded through the same button by selecting HDF5 or Text file in the load file dialog. Multiple ASCII files can be loaded simultaneously as before. 
+* Fixed bug with `Clear` button.
+
 ## What's new (v 0.4.2)
 
 * _Fixed ASCII data loading bug_
