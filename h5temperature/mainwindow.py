@@ -458,18 +458,21 @@ class MainWindow(QWidget):
         self.results_table.clearContents()
 
         item = self.dataset_tree.currentItem()
-        # if item is a parent I select the first child:
-        if item.childCount() > 0:
-            item.setExpanded(True)
-            item.setSelected(False)
-            first_child = item.child(0)
-            first_child.setSelected(True)
-            self.dataset_tree.setCurrentItem(first_child)
-            self.dataset_tree.scrollToItem(first_child)
-            self.dataset_tree.setFocus()
-            item = self.dataset_tree.currentItem()
+
 
         if item is not None:
+
+            # this block: if item is a parent I select the first child:
+            if item.childCount() > 0:
+                item.setExpanded(True)
+                item.setSelected(False)
+                first_child = item.child(0)
+                first_child.setSelected(True)
+                self.dataset_tree.setCurrentItem(first_child)
+                self.dataset_tree.scrollToItem(first_child)
+                self.dataset_tree.setFocus()
+                item = self.dataset_tree.currentItem()
+
             current = self.data.find_by_key(item.text(0))
          
             # if autofit, or called from fitbutton or delta_changed

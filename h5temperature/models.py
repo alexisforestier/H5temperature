@@ -284,10 +284,10 @@ class TemperaturesBatch():
 
         self.extract_all()
 
-    # as batch fit calls the constructor it will reinitiate 
+    # as batch fit calls the constructor it will reinitialize
     # self.keys and everything else
     # otherwise if extract all is called, I have to overwrite self.keys()
-    # but the length remains the same. Hence I do not use append.
+    # but the length remains the same. Hence I do not use 'append'.
     def extract_all(self):
         # populate everything
         for i, meas in enumerate(self.measurements):
